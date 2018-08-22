@@ -1,6 +1,6 @@
 
 (asdf:defsystem #:gantlet
-  :depends-on (#:mcclim #:gantt #:gantt-example)
+  :depends-on (#:mcclim #:gantt)
   :serial t
   :components
   ((:file "gantlet")))
