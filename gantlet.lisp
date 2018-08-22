@@ -110,10 +110,8 @@
 (define-gantlet-app-command (com-quit :name t :keystroke (#\q :meta)) ()
   (frame-exit *application-frame*))
 
-(defvar *moose*)
 (define-gantlet-app-command (com-redraw :name t) ()
   (print *application-frame* *debug-io*)
-  (setf *moose* *application-frame*)
   (let ((gantlet-pane (find-pane-named *application-frame* 'app)))
     (when gantlet-pane
       (let ((region (or (pane-viewport-region gantlet-pane)
