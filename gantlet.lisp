@@ -28,20 +28,73 @@
     (when task
       (set-pane-task pane task))))
 
-(defmethod note-space-requirements-changed ((pane gantlet-pane) child))
+(defmethod note-space-requirements-changed ((pane gantlet-pane) child)
+  )
+
+(defun zoom-x-callback (gadget scale)
+  (let ((frame (pane-frame gadget)))
+    (let ((scrolling (find-pane-named frame 'scrolling))
+          (pane (find-pane-named frame 'app)))
+      (setf (zoom-x-level pane) scale)
+      (with-bounding-rectangle* (x1 y1 x2 y2)
+          scrolling
+        (print (list 'scrolling
+                     (float x1)
+                     (float y1)
+                     (float x2)
+                     (float y2)
+                     *terminal-io*)))
+      (with-bounding-rectangle* (x1 y1 x2 y2)
+          pane
+        (print (list 'app
+                     (float x1)
+                     (float y1)
+                     (float x2)
+                     (float y2)
+                     *terminal-io*)))
+      #+nil (resize-sheet)
+      (repaint-sheet pane +everywhere+))))
+
+(defun zoom-y-callback (gadget scale)
+  (let ((frame (pane-frame gadget)))
+    (let ((pane (find-pane-named frame 'app)))
+      (setf (zoom-y-level pane) scale)
+      (repaint-sheet pane +everywhere+))))
 
 (define-application-frame gantlet-app ()
   ()
   (:menu-bar menubar-command-table)
   (:panes
    (app gantlet-pane
-        :height 1024 :width 1024
         :display-function 'display-gantlet)
+   (zoom-x :slider
+           :min-value 0.1
+         :max-value 10
+         :decimal-places 2
+         :value 1.0d0
+         :show-value-p t
+         :orientation :horizontal
+         :drag-callback 'zoom-x-callback
+         :value-changed-callback 'zoom-x-callback)
+   (zoom-y :slider
+         :min-value 0.1
+         :max-value 10
+         :decimal-places 2
+         :value 1.0d0
+         :show-value-p t
+         :orientation :horizontal
+         :drag-callback 'zoom-y-callback
+         :value-changed-callback 'zoom-y-callback)
    (int :interactor :height 200 :width 600))
   (:layouts
    (default (vertically ()
               (scrolling ()
                 app)
+              (vertically ()
+                (labelling (:label "Zoom X")
+                  zoom-x)
+                (labelling (:label "Zoom Y")
+                  zoom-y))
               int))))
 
 (defparameter *task-colors*
