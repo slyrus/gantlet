@@ -100,13 +100,6 @@
                       do (draw-task child))))
           (draw-task task))))))
 
-(defun gantlet-main ()
-  (let ((frame (make-application-frame 'gantlet-app)))
-    (values frame
-            (bt:make-thread
-             (lambda ()
-               (run-frame-top-level frame))))))
-
 (define-gantlet-app-command (com-quit :name t :keystroke (#\q :meta)) ()
   (frame-exit *application-frame*))
 
@@ -130,3 +123,13 @@
 		    :errorp nil
 		    :menu '(("File" :menu file-command-table)
                             ("Gantt" :menu gantt-command-table)))
+
+(defvar *gantlet-application*)
+
+(defun gantlet-main ()
+  (let ((frame (setf *gantlet-application* (make-application-frame 'gantlet-app))))
+    (values frame
+            (bt:make-thread
+             (lambda ()
+               (run-frame-top-level frame))))))
+
