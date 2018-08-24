@@ -131,7 +131,7 @@
    (fill-color :initarg :fill-color :accessor task-glyph-fill-color)
    (border-color :initarg :border-color :accessor task-glyph-border-color)))
 
-(define-presentation-method present (task-glyph (type task-glyph) stream
+(define-presentation-method present (task-glyph (type task-glyph) pane
                                                 (view gantt-chart-view) &key)
   (let* ((label-left-margin 6)
          (label-height 16)
@@ -141,59 +141,64 @@
          (style (make-text-style family face label-size)))
     (with-slots (task x1 y1 x2 y2 fill-color border-color)
         task-glyph
-      (let ((sheet stream))
-        (draw-rectangle* sheet
-                         x1 y1 x2 y2
-                         :ink fill-color)
-        (draw-rectangle* sheet
-                         x1 y1 x2 y2
-                         :ink border-color
-                         :filled nil
-                         :line-thickness 4)
-        (draw-text* sheet
-                    (gantt::name task)
-                    (+ x1 label-left-margin)
-                    (+ y1 label-height)
-                    :ink +black+
-                    :text-size label-size
-                    :text-style style)))))
+      (draw-rectangle* pane
+                       x1 y1 x2 y2
+                       :ink fill-color)
+      (draw-rectangle* pane
+                       x1 y1 x2 y2
+                       :ink border-color
+                       :filled nil
+                       :line-thickness 4)
+      (draw-text* pane
+                  (gantt::name task)
+                  (+ x1 label-left-margin)
+                  (+ y1 label-height)
+                  :ink +black+
+                  :text-size label-size
+                  :text-style style))))
+
+(define-presentation-method present (task-view (type task-view) pane
+                                               (view gantt-chart-view) &key)
+  (let* ((task (task-view-task task-view))
+         (start (task-view-start task-view))
+         (end (task-view-end task-view))
+         (pane-task-length (local-time:timestamp-difference end start))
+         (pane-width (rectangle-width (sheet-region pane)))
+         (pane-unit (/ pane-task-length pane-width))
+         (task-height 16)
+         (task-padding 12)
+         (bottom-margin 6)
+         (task-counter 0)
+         (y-offset 20)
+         (x-zoom (zoom-x-level pane))
+         (y-zoom (zoom-y-level pane)))
+    (labels ((draw-task (task)
+               (let* ((task-start (or (start task) start))
+                      (task-end (or (end task) end)))
+                 (let ((xstart (/ (local-time:timestamp-difference task-start start) pane-unit))
+                       (xend (/ (local-time:timestamp-difference task-end start) pane-unit)))
+                   (let ((tg (make-instance 'task-glyph
+                                            :task task
+                                            :x1 (* x-zoom (max 0 xstart))
+                                            :y1 (* y-zoom y-offset)
+                                            :x2 (* x-zoom (min xend pane-width))
+                                            :y2 (+ (* y-zoom (+ y-offset task-height)) bottom-margin)
+                                            :fill-color (elt *task-colors* (mod task-counter (length *task-colors*)))
+                                            :border-color (elt *task-border-colors* (mod task-counter (length *task-border-colors*))))))
+                     (present tg 'task-glyph))
+                   (incf y-offset (+ task-height task-padding))
+                   (incf task-counter)))
+               (loop for child across (gantt::children task)
+                  do (draw-task child))))
+      (draw-task task))))
 
 (defun display-gantlet (frame pane)
   (declare (ignore frame))
   (let* ((task (pane-task pane)))
     (when task
-      (let* ((task-view (pane-task-view pane))
-             (start (task-view-start task-view))
-             (end (task-view-end task-view))
-             (pane-task-length (local-time:timestamp-difference end start))
-             (pane-width (rectangle-width (sheet-region pane)))
-             (pane-unit (/ pane-task-length pane-width))
-             (task-height 16)
-             (task-padding 12)
-             (bottom-margin 6)
-             (task-counter 0)
-             (y-offset 20)
-             (x-zoom (zoom-x-level pane))
-             (y-zoom (zoom-y-level pane)))
-        (labels ((draw-task (task)
-                   (let* ((task-start (or (start task) start))
-                          (task-end (or (end task) end)))
-                     (let ((xstart (/ (local-time:timestamp-difference task-start start) pane-unit))
-                           (xend (/ (local-time:timestamp-difference task-end start) pane-unit)))
-                       (let ((tg (make-instance 'task-glyph
-                                                :task task
-                                                :x1 (* x-zoom (max 0 xstart))
-                                                :y1 (* y-zoom y-offset)
-                                                :x2 (* x-zoom (min xend pane-width))
-                                                :y2 (+ (* y-zoom (+ y-offset task-height)) bottom-margin)
-                                                :fill-color (elt *task-colors* (mod task-counter (length *task-colors*)))
-                                                :border-color (elt *task-border-colors* (mod task-counter (length *task-border-colors*))))))
-                         (present tg 'task-glyph))
-                       (incf y-offset (+ task-height task-padding))
-                       (incf task-counter)))
-                   (loop for child across (gantt::children task)
-                      do (draw-task child))))
-          (draw-task task))))))
+      (let ((task-view (pane-task-view pane)))
+        (when task-view
+          (present task-view 'task-view))))))
 
 (define-gantlet-app-command (com-quit :name t :keystroke (#\q :meta)) ()
   (frame-exit *application-frame*))
