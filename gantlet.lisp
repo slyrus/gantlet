@@ -62,24 +62,24 @@
             :display-time :command)
    (zoom-x :slider
            :min-value 0.1
-         :max-value 10
-         :decimal-places 2
-         :value 1.0d0
-         :show-value-p t
-         :orientation :horizontal
-         :drag-callback 'zoom-x-callback
-         :value-changed-callback 'zoom-x-callback
-         :min-height 60 :max-height 40)
+           :max-value 10
+           :decimal-places 2
+           :value 1.0d0
+           :show-value-p t
+           :orientation :horizontal
+           :drag-callback 'zoom-x-callback
+           :value-changed-callback 'zoom-x-callback
+           :min-height 24 :max-height 24)
    (zoom-y :slider
-         :min-value 0.1
-         :max-value 10
-         :decimal-places 2
-         :value 1.0d0
-         :show-value-p t
-         :orientation :horizontal
-         :drag-callback 'zoom-y-callback
-         :value-changed-callback 'zoom-y-callback
-         :min-height 60 :max-height 40)
+           :min-value 0.1
+           :max-value 10
+           :decimal-places 2
+           :value 1.0d0
+           :show-value-p t
+           :orientation :horizontal
+           :drag-callback 'zoom-y-callback
+           :value-changed-callback 'zoom-y-callback
+           :min-height 24 :max-height 24)
    (int :interactor
         :height 200
         :max-height 200
