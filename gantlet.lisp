@@ -30,15 +30,16 @@
     (when task
       (set-pane-task pane task))))
 
-(defmethod note-space-requirements-changed ((pane gantlet-pane) child)
-  (break)
-  (setf (pane-needs-redisplay pane) t))
-
 (defun redraw (frame pane)
   (window-clear pane)
   (display-gantlet frame pane)
   (clim:redisplay-frame-pane frame pane))
 
+;; the zoom callbacks do not (yet) work as I would like. Problems:
+;;
+;; 1. When you zoom in the scroll bars are reset to 0, 0
+;;
+;; 2. There's a lot of flickering.
 (defun zoom-x-callback (gadget scale)
   (declare (optimize (debug 3)))
   (let ((frame (pane-frame gadget)))
@@ -305,10 +306,6 @@
           :documentation "Show info for this task.")
     (object)
   (list object))
-
-(defmethod handle-event ((pane gantlet-pane) (event pointer-button-release-event))
-  #+(or)
-  (break))
 
 (defvar *gantlet-application*)
 
