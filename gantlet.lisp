@@ -76,23 +76,23 @@
            :decimal-places 2
            :value 1.0d0
            :show-value-p t
-           :orientation :horizontal
+           :orientation :vertical
            :drag-callback 'zoom-y-callback
            :value-changed-callback 'zoom-y-callback
-           :min-height 24 :max-height 24)
+           :min-width 24 :max-width 24)
    (int :interactor
         :height 200
         :max-height 200
         :width 600))
   (:layouts
    (default (vertically ()
-              (scrolling ()
-                gantlet)
-              (vertically ()
-                (labelling (:label "Zoom X")
-                  zoom-x)
-                (labelling (:label "Zoom Y")
-                  zoom-y))
+              (horizontally ()
+                  (scrolling ()
+                    gantlet)
+                  (labelling (:label "Zoom Y")
+                    zoom-y))
+              (labelling (:label "Zoom X")
+                zoom-x)
               int))))
 
 (defparameter *task-border-colors*
