@@ -40,12 +40,30 @@
   (clim:redisplay-frame-pane frame pane))
 
 (defun zoom-x-callback (gadget scale)
+  (declare (optimize (debug 3)))
   (let ((frame (pane-frame gadget)))
     (let ((pane (find-pane-named frame 'gantlet)))
       (setf (zoom-x-level pane) scale)
       (setf (pane-needs-redisplay pane) t)
+
+      ;; 1. find current viewport center
+      (with-bounding-rectangle* (old-x1 old-y1 old-x2 old-y2)
+          (pane-viewport-region pane)
+        (declare (ignore old-x2 old-y1 old-y2))
+
+        (redraw *application-frame* pane)
+        (setf (pane-needs-redisplay pane) t)
+
+        (with-bounding-rectangle* (new-x1 new-y1 new-x2 new-y2)
+            (pane-viewport-region pane)
+          (declare (ignore new-y2))
+          (let ((new-x-pos (+ old-x1 (/ (- new-x2 new-x1) 2))))
+
+            ;; 2. set the viewport center to the previous viewport center
+            (scroll-extent pane new-x-pos new-y1))))
+
       (redraw *application-frame* pane)
-      (repaint-sheet pane +everywhere+))))
+      (setf (pane-needs-redisplay pane) t))))
 
 (defun zoom-y-callback (gadget scale)
   (let ((frame (pane-frame gadget)))
@@ -53,7 +71,7 @@
       (setf (zoom-y-level pane) scale)
       (setf (pane-needs-redisplay pane) t)
       (redraw *application-frame* pane)
-      (repaint-sheet pane +everywhere+))))
+      #+nil (repaint-sheet pane +everywhere+))))
 
 (define-application-frame gantlet-app ()
   ()
