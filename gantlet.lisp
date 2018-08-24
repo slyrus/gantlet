@@ -177,7 +177,6 @@
   (frame-exit *application-frame*))
 
 (define-gantlet-app-command (com-redraw :name t) ()
-  (print *application-frame* *debug-io*)
   (let ((gantlet-pane (find-pane-named *application-frame* 'gantlet)))
     (when gantlet-pane
       (redraw *application-frame* gantlet-pane)

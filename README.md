@@ -1,7 +1,13 @@
 
 * Overview
 
+You will also need [Gantt](https://github.com/slyrus/gantt) to run this.
+
 To run this:
+
+    (asdf:load-system "gantt")
+    (asdf:load-system "gantt-example")
+    (asdf:load-system "gantlet")
 
     (let ((app (gantlet::gantlet-main)))
       (sleep 0.5)
