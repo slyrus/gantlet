@@ -138,12 +138,12 @@
                                           (* x-zoom (max 0 xstart))
                                           (* y-zoom y-offset)
                                           (* x-zoom (min xend pane-width))
-                                          (* y-zoom (+ y-offset task-height bottom-margin))
+                                          (+ (* y-zoom (+ y-offset task-height)) bottom-margin)
                                           :ink (elt *task-colors* (mod task-counter (length *task-colors*))))
                          (draw-text* pane
                                      str
-                                     (* x-zoom (max (+ xstart 6) 0))
-                                     (* y-zoom (+ y-offset task-height))
+                                     (max (+ (* x-zoom xstart) 6) 0)
+                                     (+ (* y-zoom y-offset) task-height)
                                      :ink +black+
                                      :text-size task-name-size
                                      :text-style style)
