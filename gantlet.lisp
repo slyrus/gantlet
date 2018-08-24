@@ -146,14 +146,17 @@
    (border-color :initarg :border-color :accessor task-glyph-border-color)
    (expanded :initarg :expanded :initform nil :accessor task-glyph-expanded)))
 
+(defun date-string (date)
+  (local-time:format-timestring nil date :format local-time:+iso-8601-date-format+))
+
 (define-presentation-method present (task-glyph (type task-glyph) pane
                                                 (task-view task-view) &key)
-  (let* ((label-left-margin 6)
-         (label-height 16)
-         (label-size :large)
+  (let* ((text-left-margin 6)
+         (text-top-margin 4)
+         (name-size :large)
          (family nil)
          (face :bold)
-         (style (make-text-style family face label-size)))
+         (style (make-text-style family face name-size)))
     (with-accessors ((task task-glyph-task)
                      (x1 task-glyph-x1)
                      (y1 task-glyph-y1)
@@ -163,22 +166,46 @@
                      (border-color task-glyph-border-color)
                      (expanded task-glyph-expanded))
         task-glyph
-      (when expanded (incf y2 24))
-      (draw-rectangle* pane
-                       x1 y1 x2 y2
-                       :ink fill-color)
-      (draw-rectangle* pane
-                       x1 y1 x2 y2
-                       :ink border-color
-                       :filled nil
-                       :line-thickness 4)
-      (draw-text* pane
-                  (gantt::name task)
-                  (+ x1 label-left-margin)
-                  (+ y1 label-height)
-                  :ink +black+
-                  :text-size label-size
-                  :text-style style))))
+
+      ;; first we need to compute text sizes, then we can draw the
+      ;; boxes, and then, finally, the strings that go in the boxes.
+      (let ((name (gantt::name task))
+            (text-list))
+        (flet ((add-text (str)
+                 (multiple-value-bind (width height final-x final-y baseline)
+	             (text-size pane str :text-style style)
+                   (declare (ignore final-x final-y baseline))
+                   (push (list str width (+ text-top-margin height)) text-list))))
+          (add-text name)
+          (when expanded
+            (alexandria:when-let ((start-date (start task)))
+              (add-text (format nil "Start: ~A" (date-string start-date))))
+            (alexandria:when-let ((end-date (end task)))
+              (add-text (format nil "End: ~A" (date-string end-date))))
+            (let ((resources (task-resources task)))
+              (loop for resource in resources
+                 do
+                   (add-text (format nil "Resource: ~A" (gantt::name resource))))))
+          (let ((height (apply #'+ (mapcar #'third text-list)))
+                (max-width (apply #'max (mapcar #'second text-list))))
+            (incf y2 height)
+            (draw-rectangle* pane x1 y1 x2 y2 :ink fill-color)
+            (draw-rectangle* pane x1 y1 x2 y2
+                             :ink border-color :filled nil :line-thickness 4)
+            (let ((text-x-offset (if (> max-width (- x2 x1))
+                                     (+ x2 text-left-margin)
+                                     (+ x1 text-left-margin))))
+              (loop for (text width height) in (reverse text-list)
+                 with y-offset = y1
+                 do
+                   (draw-text* pane text
+                               text-x-offset
+                               (+ y-offset text-top-margin)
+                               :align-y :top
+                               :ink +black+
+                               :text-size name-size
+                               :text-style style)
+                   (incf y-offset height)))))))))
 
 (define-presentation-method present (task (type task) pane
                                           (task-view task-view) &key)
