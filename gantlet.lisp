@@ -4,11 +4,11 @@
 
 (in-package #:gantlet)
 
-(defclass task-view ()
+(defclass task-view (view)
   ((task :initarg :task :accessor task-view-task)
    (start :initarg :start :accessor task-view-start)
    (end :initarg :end :accessor task-view-end)
-   (expanded-task-hash-table :accessor task-exapanded-task-hash-table :initform (make-hash-table))))
+   (expanded-task-hash-table :accessor task-view-exapanded-task-hash-table :initform (make-hash-table))))
 
 (defclass gantlet-pane (application-pane table-pane)
   ((task :initform nil :accessor pane-task)
@@ -18,11 +18,12 @@
 
 (defun set-pane-task (pane task)
   (setf (pane-task pane) task)
-  (setf (pane-task-view pane)
-          (make-instance 'task-view
-                         :task task
-                         :start (start task)
-                         :end (end task))))
+  (let ((task-view (make-instance 'task-view
+                                  :task task
+                                  :start (start task)
+                                  :end (end task))))
+    (setf (pane-task-view pane) task-view
+          (stream-default-view pane) task-view)))
 
 (defmethod shared-initialize :after ((pane gantlet-pane) slot-names &key)
   (let ((task (pane-task pane)))
@@ -54,19 +55,13 @@
       (redraw *application-frame* pane)
       (repaint-sheet pane +everywhere+))))
 
-(defclass gantt-chart-view (view)
-  ())
-
-(defparameter +gantt-chart-view+ (make-instance 'gantt-chart-view))
-
-
 (define-application-frame gantlet-app ()
   ()
   (:menu-bar menubar-command-table)
   (:panes
    (gantlet gantlet-pane
             :display-function 'display-gantlet
-            :default-view +gantt-chart-view+
+            #| :default-view +gantt-chart-view+ |#
             :display-time :command)
    (zoom-x :slider
            :min-value 0.1
@@ -124,6 +119,7 @@
 
 (defclass task-glyph ()
   ((task :initarg :task :accessor task-glyph-task)
+   (task-view :initarg :task-view :accessor task-glyph-task-view)
    (x1 :initarg :x1 :accessor task-glyph-x1)
    (y1 :initarg :y1 :accessor task-glyph-y1)
    (x2 :initarg :x2 :accessor task-glyph-x2)
@@ -132,35 +128,43 @@
    (border-color :initarg :border-color :accessor task-glyph-border-color)))
 
 (define-presentation-method present (task-glyph (type task-glyph) pane
-                                                (view gantt-chart-view) &key)
+                                                (task-view task-view) &key)
   (let* ((label-left-margin 6)
          (label-height 16)
          (label-size :large)
          (family nil)
          (face :bold)
          (style (make-text-style family face label-size)))
-    (with-slots (task x1 y1 x2 y2 fill-color border-color)
+    (with-accessors ((task task-glyph-task)
+                     (x1 task-glyph-x1)
+                     (y1 task-glyph-y1)
+                     (x2 task-glyph-x2)
+                     (y2 task-glyph-y2)
+                     (fill-color task-glyph-fill-color)
+                     (border-color task-glyph-border-color))
         task-glyph
-      (draw-rectangle* pane
-                       x1 y1 x2 y2
-                       :ink fill-color)
-      (draw-rectangle* pane
-                       x1 y1 x2 y2
-                       :ink border-color
-                       :filled nil
-                       :line-thickness 4)
-      (draw-text* pane
-                  (gantt::name task)
-                  (+ x1 label-left-margin)
-                  (+ y1 label-height)
-                  :ink +black+
-                  :text-size label-size
-                  :text-style style))))
+      (let* ((ht (task-view-exapanded-task-hash-table task-view))
+             (expanded (gethash task ht)))
+        (when expanded (incf y2 24))
+        (draw-rectangle* pane
+                         x1 y1 x2 y2
+                         :ink fill-color)
+        (draw-rectangle* pane
+                         x1 y1 x2 y2
+                         :ink border-color
+                         :filled nil
+                         :line-thickness 4)
+        (draw-text* pane
+                    (gantt::name task)
+                    (+ x1 label-left-margin)
+                    (+ y1 label-height)
+                    :ink +black+
+                    :text-size label-size
+                    :text-style style)))))
 
-(define-presentation-method present (task-view (type task-view) pane
-                                               (view gantt-chart-view) &key)
-  (let* ((task (task-view-task task-view))
-         (start (task-view-start task-view))
+(define-presentation-method present (task (type task) pane
+                                          (task-view task-view) &key)
+  (let* ((start (task-view-start task-view))
          (end (task-view-end task-view))
          (pane-task-length (local-time:timestamp-difference end start))
          (pane-width (rectangle-width (sheet-region pane)))
@@ -174,11 +178,14 @@
          (y-zoom (zoom-y-level pane)))
     (labels ((draw-task (task)
                (let* ((task-start (or (start task) start))
-                      (task-end (or (end task) end)))
+                      (task-end (or (end task) end))
+                      (ht (task-view-exapanded-task-hash-table task-view))
+                      (expanded (gethash task ht)))
                  (let ((xstart (/ (local-time:timestamp-difference task-start start) pane-unit))
                        (xend (/ (local-time:timestamp-difference task-end start) pane-unit)))
                    (let ((tg (make-instance 'task-glyph
                                             :task task
+                                            :task-view task-view
                                             :x1 (* x-zoom (max 0 xstart))
                                             :y1 (* y-zoom y-offset)
                                             :x2 (* x-zoom (min xend pane-width))
@@ -186,7 +193,7 @@
                                             :fill-color (elt *task-colors* (mod task-counter (length *task-colors*)))
                                             :border-color (elt *task-border-colors* (mod task-counter (length *task-border-colors*))))))
                      (present tg 'task-glyph))
-                   (incf y-offset (+ task-height task-padding))
+                   (incf y-offset (+ task-height task-padding (if expanded 24 0)))
                    (incf task-counter)))
                (loop for child across (gantt::children task)
                   do (draw-task child))))
@@ -196,9 +203,7 @@
   (declare (ignore frame))
   (let* ((task (pane-task pane)))
     (when task
-      (let ((task-view (pane-task-view pane)))
-        (when task-view
-          (present task-view 'task-view))))))
+      (present task 'task))))
 
 (define-gantlet-app-command (com-quit :name t :keystroke (#\q :meta)) ()
   (frame-exit *application-frame*))
@@ -228,7 +233,18 @@
 (define-gantlet-app-command (com-show-task-glyph-info :name t :menu t
                                                       :keystroke (#\i :meta))
     ((task-glyph task-glyph))
-  (let ((task (task-glyph-task task-glyph)))
+  (let* ((task (task-glyph-task task-glyph))
+         (task-view (task-glyph-task-view task-glyph))
+         (ht (task-view-exapanded-task-hash-table task-view))
+         (expanded (gethash task ht)))
+    (if expanded
+        (setf (gethash task ht) nil)
+        (setf (gethash task ht) t))
+    (let ((gantlet-pane (find-pane-named *application-frame* 'gantlet)))
+      (when gantlet-pane
+        (redraw *application-frame* gantlet-pane)))
+
+    #+nil
     (notify-user *application-frame*
 	         (format nil "~A."
 		         (gantt::name task))
