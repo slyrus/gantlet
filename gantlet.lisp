@@ -125,7 +125,8 @@
    (x2 :initarg :x2 :accessor task-glyph-x2)
    (y2 :initarg :y2 :accessor task-glyph-y2)
    (fill-color :initarg :fill-color :accessor task-glyph-fill-color)
-   (border-color :initarg :border-color :accessor task-glyph-border-color)))
+   (border-color :initarg :border-color :accessor task-glyph-border-color)
+   (expanded :initarg :expanded :initform nil :accessor task-glyph-expanded)))
 
 (define-presentation-method present (task-glyph (type task-glyph) pane
                                                 (task-view task-view) &key)
@@ -141,26 +142,25 @@
                      (x2 task-glyph-x2)
                      (y2 task-glyph-y2)
                      (fill-color task-glyph-fill-color)
-                     (border-color task-glyph-border-color))
+                     (border-color task-glyph-border-color)
+                     (expanded task-glyph-expanded))
         task-glyph
-      (let* ((ht (task-view-exapanded-task-hash-table task-view))
-             (expanded (gethash task ht)))
-        (when expanded (incf y2 24))
-        (draw-rectangle* pane
-                         x1 y1 x2 y2
-                         :ink fill-color)
-        (draw-rectangle* pane
-                         x1 y1 x2 y2
-                         :ink border-color
-                         :filled nil
-                         :line-thickness 4)
-        (draw-text* pane
-                    (gantt::name task)
-                    (+ x1 label-left-margin)
-                    (+ y1 label-height)
-                    :ink +black+
-                    :text-size label-size
-                    :text-style style)))))
+      (when expanded (incf y2 24))
+      (draw-rectangle* pane
+                       x1 y1 x2 y2
+                       :ink fill-color)
+      (draw-rectangle* pane
+                       x1 y1 x2 y2
+                       :ink border-color
+                       :filled nil
+                       :line-thickness 4)
+      (draw-text* pane
+                  (gantt::name task)
+                  (+ x1 label-left-margin)
+                  (+ y1 label-height)
+                  :ink +black+
+                  :text-size label-size
+                  :text-style style))))
 
 (define-presentation-method present (task (type task) pane
                                           (task-view task-view) &key)
@@ -178,7 +178,9 @@
          (y-zoom (zoom-y-level pane)))
     (labels ((draw-task (task)
                (let* ((task-start (or (start task) start))
-                      (task-end (or (end task) end)))
+                      (task-end (or (end task) end))
+                      (ht (task-view-exapanded-task-hash-table task-view))
+                      (expanded (gethash task ht)))
                  (let ((xstart (/ (local-time:timestamp-difference task-start start) pane-unit))
                        (xend (/ (local-time:timestamp-difference task-end start) pane-unit)))
                    (let ((tg (make-instance 'task-glyph
@@ -189,7 +191,8 @@
                                             :x2 (* x-zoom (min xend pane-width))
                                             :y2 (+ y-offset (* y-zoom task-height) bottom-margin)
                                             :fill-color (elt *task-colors* (mod task-counter (length *task-colors*)))
-                                            :border-color (elt *task-border-colors* (mod task-counter (length *task-border-colors*))))))
+                                            :border-color (elt *task-border-colors* (mod task-counter (length *task-border-colors*)))
+                                            :expanded expanded)))
                      (with-bounding-rectangle* (x1 y1 x2 y2)
                          (present tg 'task-glyph)
                        (declare (ignore x1 x2))
