@@ -29,44 +29,37 @@
       (set-pane-task pane task))))
 
 (defmethod note-space-requirements-changed ((pane gantlet-pane) child)
-  )
+  (break)
+  (setf (pane-needs-redisplay pane) t))
+
+(defun redraw (frame pane)
+  (window-clear pane)
+  (display-gantlet frame pane)
+  (clim:redisplay-frame-pane frame pane))
 
 (defun zoom-x-callback (gadget scale)
   (let ((frame (pane-frame gadget)))
-    (let ((scrolling (find-pane-named frame 'scrolling))
-          (pane (find-pane-named frame 'app)))
+    (let ((pane (find-pane-named frame 'gantlet)))
       (setf (zoom-x-level pane) scale)
-      (with-bounding-rectangle* (x1 y1 x2 y2)
-          scrolling
-        (print (list 'scrolling
-                     (float x1)
-                     (float y1)
-                     (float x2)
-                     (float y2)
-                     *terminal-io*)))
-      (with-bounding-rectangle* (x1 y1 x2 y2)
-          pane
-        (print (list 'app
-                     (float x1)
-                     (float y1)
-                     (float x2)
-                     (float y2)
-                     *terminal-io*)))
-      #+nil (resize-sheet)
+      (setf (pane-needs-redisplay pane) t)
+      (redraw *application-frame* pane)
       (repaint-sheet pane +everywhere+))))
 
 (defun zoom-y-callback (gadget scale)
   (let ((frame (pane-frame gadget)))
-    (let ((pane (find-pane-named frame 'app)))
+    (let ((pane (find-pane-named frame 'gantlet)))
       (setf (zoom-y-level pane) scale)
+      (setf (pane-needs-redisplay pane) t)
+      (redraw *application-frame* pane)
       (repaint-sheet pane +everywhere+))))
 
 (define-application-frame gantlet-app ()
   ()
   (:menu-bar menubar-command-table)
   (:panes
-   (app gantlet-pane
-        :display-function 'display-gantlet)
+   (gantlet gantlet-pane
+            :display-function 'display-gantlet
+            :display-time :command)
    (zoom-x :slider
            :min-value 0.1
          :max-value 10
@@ -75,7 +68,8 @@
          :show-value-p t
          :orientation :horizontal
          :drag-callback 'zoom-x-callback
-         :value-changed-callback 'zoom-x-callback)
+         :value-changed-callback 'zoom-x-callback
+         :min-height 60 :max-height 40)
    (zoom-y :slider
          :min-value 0.1
          :max-value 10
@@ -84,12 +78,16 @@
          :show-value-p t
          :orientation :horizontal
          :drag-callback 'zoom-y-callback
-         :value-changed-callback 'zoom-y-callback)
-   (int :interactor :height 200 :width 600))
+         :value-changed-callback 'zoom-y-callback
+         :min-height 60 :max-height 40)
+   (int :interactor
+        :height 200
+        :max-height 200
+        :width 600))
   (:layouts
    (default (vertically ()
               (scrolling ()
-                app)
+                gantlet)
               (vertically ()
                 (labelling (:label "Zoom X")
                   zoom-x)
@@ -123,7 +121,9 @@
              (face :bold)
              (style (make-text-style family face task-name-size))
              (task-counter 0)
-             (y-offset 20))
+             (y-offset 20)
+             (x-zoom (zoom-x-level pane))
+             (y-zoom (zoom-y-level pane)))
         (labels ((draw-task (task)
                    (let* ((task-start (or (start task) start))
                           (task-end (or (end task) end)))
@@ -135,15 +135,15 @@
                            (climi::text-bounding-rectangle* medium str :text-style style)
                          (declare (ignore left right))
                          (draw-rectangle* pane
-                                          (max 0 xstart)
-                                          y-offset
-                                          (min xend pane-width)
-                                          (+ y-offset task-height bottom-margin)
+                                          (* x-zoom (max 0 xstart))
+                                          (* y-zoom y-offset)
+                                          (* x-zoom (min xend pane-width))
+                                          (* y-zoom (+ y-offset task-height bottom-margin))
                                           :ink (elt *task-colors* (mod task-counter (length *task-colors*))))
                          (draw-text* pane
                                      str
-                                     (max (+ xstart 6) 0)
-                                     (+ y-offset task-height)
+                                     (* x-zoom (max (+ xstart 6) 0))
+                                     (* y-zoom (+ y-offset task-height))
                                      :ink +black+
                                      :text-size task-name-size
                                      :text-style style)
@@ -158,8 +158,10 @@
 
 (define-gantlet-app-command (com-redraw :name t) ()
   (print *application-frame* *debug-io*)
-  (let ((gantlet-pane (find-pane-named *application-frame* 'app)))
+  (let ((gantlet-pane (find-pane-named *application-frame* 'gantlet)))
     (when gantlet-pane
+      (redraw *application-frame* gantlet-pane)
+      #+nil
       (let ((region (or (pane-viewport-region gantlet-pane)
                         (sheet-region gantlet-pane))))
         (when region (handle-repaint gantlet-pane region))))))
