@@ -95,13 +95,24 @@
                   zoom-y))
               int))))
 
-(defparameter *task-colors*
+(defparameter *task-border-colors*
   (list (make-rgb-color 0.5 0.5 1.0)
         (make-rgb-color 0.5 1.0 0.5)
         (make-rgb-color 1.0 0.5 0.5)
         (make-rgb-color 0.5 0.75 0.5)
         (make-rgb-color 0.5 0.75 0.75)
         (make-rgb-color 0.5 0.5 0.75)))
+
+(defparameter *task-colors*
+  (mapcar (lambda (color)
+            (multiple-value-bind (r g b)
+                (color-rgb color)
+              (let ((lightness 0.6))
+                (make-rgb-color
+                 (+ r (* (- 1 r) lightness))
+                 (+ g (* (- 1 g) lightness))
+                 (+ b (* (- 1 b) lightness))))))
+          *task-border-colors*))
 
 (defun display-gantlet (frame pane)
   (declare (ignore frame))
@@ -114,7 +125,7 @@
              (pane-width (rectangle-width (sheet-region pane)))
              (pane-unit (/ pane-task-length pane-width))
              (task-height 16)
-             (task-padding 8)
+             (task-padding 12)
              (bottom-margin 6)
              (task-name-size :large)
              (family nil)
@@ -140,6 +151,15 @@
                                           (* x-zoom (min xend pane-width))
                                           (+ (* y-zoom (+ y-offset task-height)) bottom-margin)
                                           :ink (elt *task-colors* (mod task-counter (length *task-colors*))))
+                         (draw-rectangle* pane
+                                          (* x-zoom (max 0 xstart))
+                                          (* y-zoom y-offset)
+                                          (* x-zoom (min xend pane-width))
+                                          (+ (* y-zoom (+ y-offset task-height)) bottom-margin)
+                                          :ink (elt *task-border-colors* (mod task-counter
+                                                                              (length *task-border-colors*)))
+                                          :filled nil
+                                          :line-thickness 4)
                          (draw-text* pane
                                      str
                                      (max (+ (* x-zoom xstart) 6) 0)
