@@ -16,8 +16,9 @@ To run this:
     (asdf:load-system "gantlet")
 
     (let ((app (gantlet::gantlet-main)))
-      (sleep 0.5)
-      (let ((gantlet-pane (clim:find-pane-named app 'gantlet)))
-        (gantlet::set-pane-task gantlet-pane gantt-example::*example-project*)))
+      (sleep 1.0)
+      (let ((gantlet-pane (clim:find-pane-named app 'gantlet::gantlet)))
+        (gantlet::set-pane-task gantlet-pane gantt-example::*example-project*)
+        (gantlet::redraw app gantlet-pane)))
 
 More documentation to follow.
