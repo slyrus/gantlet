@@ -39,6 +39,9 @@
   (display-gantlet frame pane)
   (clim:redisplay-frame-pane frame pane))
 
+(defun redisplay (frame pane)
+  (clim:redisplay-frame-pane frame pane))
+
 ;; the zoom callbacks do not (yet) work as I would like. Problems:
 ;;
 ;; 1. When you zoom in the scroll bars are reset to 0, 0
@@ -222,6 +225,19 @@
 
 (define-presentation-method present (task (type task) pane
                                           (task-view task-view) &key)
+
+
+  (let ((gantlet-pane (find-pane-named *application-frame* 'gantlet)))
+    (with-bounding-rectangle* (viewport-x1 viewport-y1 viewport-x2 viewport-y2)
+        (pane-viewport-region gantlet-pane)
+      (with-bounding-rectangle* (pane-x1 pane-y1 pane-x2 pane-y2)
+          gantlet-pane
+        (with-bounding-rectangle* (sheet-x1 sheet-y1 sheet-x2 sheet-y2)
+            (sheet-region gantlet-pane)
+          (draw-text* pane (format nil "pane ~A ~A ~A ~A" pane-x1 pane-y1 pane-x2 pane-y2) 20 20)
+          (draw-text* pane (format nil "viewport ~A ~A ~A ~A" viewport-x1 viewport-y1 viewport-x2 viewport-y2) 220 20)
+          (draw-text* pane (format nil "sheet ~A ~A ~A ~A" sheet-x1 sheet-y1 sheet-x2 sheet-y2) 420 20)))))
+
   (let* ((start (task-view-start task-view))
          (end (task-view-end task-view))
          (pane-task-length (local-time:timestamp-difference end start))
@@ -231,7 +247,7 @@
          (task-padding 12)
          (bottom-margin 6)
          (task-counter 0)
-         (y-offset 20)
+         (y-offset 40)
          (x-zoom (zoom-x-level pane))
          (y-zoom (zoom-y-level pane)))
     (labels ((draw-task (task)
@@ -278,13 +294,28 @@
                         (sheet-region gantlet-pane))))
         (when region (handle-repaint gantlet-pane region))))))
 
+(define-gantlet-app-command (com-redisplay :name t) ()
+  (let ((gantlet-pane (find-pane-named *application-frame* 'gantlet)))
+    (when gantlet-pane
+      (redisplay *application-frame* gantlet-pane)
+      (let ((view-bounds (true-viewport-region gantlet-pane)))
+        (with-bounding-rectangle* (x1 y1 x2 y2)
+            view-bounds
+          (draw-rectangle* gantlet-pane
+                           (+ x1 5) (+ y1 5)
+                           (- x2 5) (- y2 5)
+                           :ink +red+
+                           :filled nil)))
+      )))
+
 (make-command-table 'file-command-table
 		    :errorp nil
 		    :menu '(("Quit" :command com-quit)))
 
 (make-command-table 'gantt-command-table
 		    :errorp nil
-		    :menu '(("Redraw" :command com-redraw)))
+		    :menu '(("Redraw" :command com-redraw)
+                            ("Redisplay" :command com-redisplay)))
 
 (make-command-table 'menubar-command-table
 		    :errorp nil
@@ -328,3 +359,27 @@
              (lambda ()
                (run-frame-top-level frame))))))
 
+
+(defmethod true-viewport-region ((pane gantlet-pane))
+  (untransform-region (sheet-native-transformation pane)
+                    (sheet-native-region pane)))
+
+(defmethod clim:redisplay-frame-panes :after
+    ((frame gantlet-app) &key force-p)
+  (declare (ignore force-p))
+  (let ((pane (clim:find-pane-named clim:*application-frame* 'gantlet)))
+    (clim:replay (clim:stream-output-history pane) pane)
+    (clim:with-output-recording-options (pane :record nil :draw t)
+      (let ((view-bounds (true-viewport-region pane)))
+        (with-bounding-rectangle* (x1 y1 x2 y2)
+            view-bounds
+          (draw-rectangle* pane
+                           (+ x1 10) (+ y1 10)
+                           (- x2 10) (- y2 10)
+                           :ink +green+
+                           :line-thickness 5
+                           :filled nil)))
+      #+nil
+      (clim:draw-rectangle* pane 0 0 1000 1000
+                            :filled t
+                            :ink clim:+background-ink+))))
