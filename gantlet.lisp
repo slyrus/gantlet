@@ -23,7 +23,11 @@
                                   :start (start task)
                                   :end (end task))))
     (setf (pane-task-view pane) task-view
-          (stream-default-view pane) task-view)))
+          (stream-default-view pane) task-view))
+  (let ((resource-list (find-pane-named (pane-frame pane) 'resource-list)))
+    (let ((resources (task-resources task)))
+      (setf (climi::visible-items resource-list) (length resources))
+      (setf (climi::list-pane-items resource-list :invoke-callback nil) (mapcar #'gantt::name resources)))))
 
 (defmethod shared-initialize :after ((pane gantlet-pane) slot-names &key)
   (let ((task (pane-task pane)))
@@ -82,6 +86,10 @@
             :display-function 'display-gantlet
             #| :default-view +gantt-chart-view+ |#
             :display-time :command)
+   (resource-list
+    (make-pane 'list-pane
+	       :value 'clim:region-intersection
+	       :name-key (lambda (x) (format nil "~(~A~)" x))))
    (zoom-x :slider
            :min-value 0.1
            :max-value 10
@@ -105,16 +113,20 @@
    (int :interactor
         :height 200
         :max-height 200
-        :width 600))
+        :width 800))
   (:layouts
    (default (vertically ()
               (horizontally ()
-                  (scrolling ()
-                    gantlet)
-                  (labelling (:label "Zoom Y")
-                    zoom-y))
-              (labelling (:label "Zoom X")
-                zoom-x)
+                (4/5 (vertically ()
+                        (horizontally ()
+                          (scrolling ()
+                            gantlet)
+                          (labelling (:label "Zoom Y")
+                            zoom-y))
+                        (labelling (:label "Zoom X")
+                          zoom-x)))
+                (1/5 (labelling (:label "Resources")
+                       resource-list)))
               int))))
 
 (defparameter *task-border-colors*
