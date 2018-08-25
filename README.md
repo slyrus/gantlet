@@ -3,6 +3,12 @@
 
 You will also need [Gantt](https://github.com/slyrus/gantt) to run this.
 
+* Prerequisites
+
+Quicklisp:
+
+    (ql:quickload '(mcclim local-time time-interval named-readtables cl-who copy-directory))
+
 To run this:
 
     (asdf:load-system "gantt")
