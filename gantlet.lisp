@@ -27,7 +27,11 @@
   (let ((resource-list (find-pane-named (pane-frame pane) 'resource-list)))
     (let ((resources (task-resources task)))
       (setf (climi::visible-items resource-list) (length resources))
-      (setf (climi::list-pane-items resource-list :invoke-callback nil) (mapcar #'gantt::name resources)))))
+      (setf (climi::list-pane-items resource-list :invoke-callback nil) (mapcar #'gantt::name resources))))
+  (window-refresh pane)
+  (pane-needs-redisplay pane)
+
+  (repaint-sheet pane +everywhere+))
 
 (defmethod shared-initialize :after ((pane gantlet-pane) slot-names &key)
   (let ((task (pane-task pane)))
