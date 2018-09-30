@@ -164,23 +164,30 @@
                 pane
               (declare (ignore py1 py2))
               (draw-rectangle* pane px1 y1 px2 (+ y2 task-padding) :ink row-color)))
-          (draw-rectangle* pane x1 y1 x2 y2 :ink fill-color)
-          (draw-rectangle* pane x1 y1 x2 y2
-                           :ink border-color :filled nil :line-thickness 2)
-          (let ((text-x-offset (if (> max-width (- x2 x1))
-                                   (+ x2 text-left-margin)
-                                   (+ x1 text-left-margin))))
-            (loop for (text width height) in (reverse text-list)
-               with y-offset = y1
-               do
-                 (draw-text* pane text
-                             text-x-offset
-                             (+ y-offset text-top-margin)
-                             :align-y :top
-                             :ink +black+
-                             :text-size name-size
-                             :text-style style)
-                 (incf y-offset height))))))))
+          (with-output-as-presentation
+              (t
+               task
+               'task
+               :record-type 'task-output-record)
+            (draw-rectangle* pane x1 y1 x2 y2 :ink fill-color)
+            (draw-rectangle* pane x1 y1 x2 y2
+                             :ink border-color :filled nil :line-thickness 2)
+            (let ((text-x-offset (if (> max-width (- x2 x1))
+                                     (+ x2 text-left-margin)
+                                     (+ x1 text-left-margin))))
+              (loop for (text width height) in (reverse text-list)
+                 with y-offset = y1
+                 do
+                   (draw-text* pane text
+                               text-x-offset
+                               (if expanded
+                                   (+ y-offset text-top-margin)
+                                   (+ y-offset (/ (- y2 y1) 2)))
+                               :align-y (if expanded :top :center)
+                               :ink +black+
+                               :text-size name-size
+                               :text-style style)
+                   (incf y-offset height)))))))))
 
 ;;
 ;; display strategy
@@ -228,24 +235,19 @@
                       task
                       'task-group)
                    (with-bounding-rectangle* (x1 y1 x2 y2)
-                       (with-output-as-presentation
-                           (t
-                            task
-                            'task
-                            :record-type 'task-output-record)
-                         (draw-task task
-                                    pane
-                                    (* x-zoom (max 0 xstart))
-                                    y-offset
-                                    (* x-zoom (min xend pane-width))
-                                    (+ y-offset (* y-zoom task-height) bottom-margin)
-                                    :fill-color (elt *task-colors*
-                                                     (mod task-counter (length *task-colors*)))
-                                    :border-color (elt *task-border-colors*
-                                                       (mod task-counter (length *task-border-colors*)))
-                                    :expanded expanded
-                                    :row-color (mod-elt *task-background-colors* task-counter)
-                                    :task-padding task-padding))
+                     (draw-task task
+                                pane
+                                (* x-zoom (max 0 xstart))
+                                y-offset
+                                (* x-zoom (min xend pane-width))
+                                (+ y-offset (* y-zoom task-height) bottom-margin)
+                                :fill-color (elt *task-colors*
+                                                 (mod task-counter (length *task-colors*)))
+                                :border-color (elt *task-border-colors*
+                                                   (mod task-counter (length *task-border-colors*)))
+                                :expanded expanded
+                                :row-color (mod-elt *task-background-colors* task-counter)
+                                :task-padding task-padding)
                      (declare (ignore x1 x2))
                      (incf y-offset (+ (- y2 y1) 0))
                      (incf task-counter))
@@ -285,7 +287,10 @@
       (with-bounding-rectangle* (x1 y1 x2 y2)
           pane
         (declare (ignore y1 y2))
-        (draw-text* pane str (+ x1 (/ (- x2 x1) 2)) 10 :align-x :center :align-y :top :text-style style))
+        (draw-text* pane str
+                    (+ x1 (/ (- x2 x1) 2)) 10
+                    :align-x :center
+                    :align-y :top :text-style style))
       (incf (task-view-y-offset task-view) height)
       (loop for child across (gantt::children task)
          for task-group-counter from 0
@@ -378,8 +383,10 @@
     (task com-show-task-info gantlet-app
           :gesture show-task-info-gesture
           :menu nil
-          :tester ((object presentation event)
+          :tester ((object presentation event context-type)
                    (declare (ignore presentation event))
+                   (break)
+                   (print context-type *debug-io*)
                    (taskp object))
           :documentation "Show info for this task.")
     (object)
