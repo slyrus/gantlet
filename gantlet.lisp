@@ -8,6 +8,8 @@
   ((task :initarg :task :accessor task-view-task)
    (start :initarg :start :accessor task-view-start)
    (end :initarg :end :accessor task-view-end)
+   (hide-completed-tasks :initform t :initarg :hide-completed-tasks :accessor task-view-hide-completed-tasks)
+   (hide-non-critical-tasks :initform t :initarg :hide-non-critical-tasks :accessor task-view-hide-non-critical-tasks)
    (y-offset :initarg :y-offset :accessor task-view-y-offset :initform 0)
    (task-counter :initarg :task-counter :accessor task-view-task-counter :initform 0)
    (show-task-info-hash-table :accessor task-view-show-task-info-hash-table :initform (make-hash-table))
@@ -28,7 +30,7 @@
   (let ((resource-list (find-pane-named (pane-frame pane) 'resource-list)))
     (let ((resources (task-resources task)))
       (setf (climi::visible-items resource-list) (length resources))
-      (setf (climi::list-pane-items resource-list :invoke-callback nil) (mapcar #'gantt::name resources))))
+      (setf (climi::list-pane-items resource-list :invoke-callback nil) (mapcar #'name resources))))
   (window-refresh pane)
   (pane-needs-redisplay pane)
   (repaint-sheet pane +everywhere+))
@@ -98,11 +100,15 @@
         (make-rgb-color 0.5 0.75 0.75)
         (make-rgb-color 0.5 0.5 0.75)))
 
+(defparameter *task-background-colors*
+  (list (make-rgb-color 0.95 0.95 0.95)
+        (make-rgb-color 0.98 0.98 0.98)))
+
 (defparameter *task-colors*
   (mapcar (lambda (color)
             (multiple-value-bind (r g b)
                 (color-rgb color)
-              (let ((lightness 0.6))
+              (let ((lightness 0.7))
                 (make-rgb-color
                  (+ r (* (- 1 r) lightness))
                  (+ g (* (- 1 g) lightness))
@@ -122,7 +128,9 @@
 (defun draw-task (task pane x1 y1 x2 y2
                   &key fill-color
                        border-color
-                       (expanded t))
+                       (expanded t)
+                       row-color
+                       (task-padding 0))
   (let* ((text-left-margin 6)
          (text-top-margin 4)
          (name-size :large)
@@ -131,7 +139,7 @@
          (style (make-text-style family face name-size)))
     ;; first we need to compute text sizes, then we can draw the
     ;; boxes, and then, finally, the strings that go in the boxes.
-    (let ((name (gantt::name task))
+    (let ((name (name task))
           (text-list))
       (flet ((add-text (str)
                (multiple-value-bind (width height final-x final-y baseline)
@@ -147,13 +155,18 @@
           (let ((resources (task-resources task)))
             (loop for resource in resources
                do
-                 (add-text (format nil "Resource: ~A" (gantt::name resource))))))
+                 (add-text (format nil "Resource: ~A" (name resource))))))
         (let ((height (apply #'+ (mapcar #'third text-list)))
               (max-width (apply #'max (mapcar #'second text-list))))
           (incf y2 height)
+          (when row-color
+            (with-bounding-rectangle* (px1 py1 px2 py2)
+                pane
+              (declare (ignore py1 py2))
+              (draw-rectangle* pane px1 y1 px2 (+ y2 task-padding) :ink row-color)))
           (draw-rectangle* pane x1 y1 x2 y2 :ink fill-color)
           (draw-rectangle* pane x1 y1 x2 y2
-                           :ink border-color :filled nil :line-thickness 4)
+                           :ink border-color :filled nil :line-thickness 2)
           (let ((text-x-offset (if (> max-width (- x2 x1))
                                    (+ x2 text-left-margin)
                                    (+ x1 text-left-margin))))
@@ -177,25 +190,34 @@
 ;; 2. setup/present the task details and (recursively) do the same for
 ;; child tasks
 
+(defun mod-elt (sequence index)
+  (elt sequence (mod index (length sequence))))
+
 (define-presentation-method present (task (type task) pane
                                           (task-view task-view) &key)
-  (let* ((start (task-view-start task-view))
-         (end (task-view-end task-view))
-         (pane-task-length (local-time:timestamp-difference end start))
-         (pane-width (rectangle-width (sheet-region pane)))
-         (pane-unit (/ pane-task-length pane-width))
-         (task-height 16)
-         (task-padding 12)
-         (bottom-margin 6)
-         (x-zoom (zoom-x-level pane))
-         (y-zoom (zoom-y-level pane)))
-    (with-accessors ((show-task-info-hash-table task-view-show-task-info-hash-table)
-                     (hide-task-children-hash-table task-view-hide-task-children-hash-table)
-                     (y-offset task-view-y-offset)
-                     (task-counter task-view-task-counter))
+  (with-accessors ((start task-view-start)
+                   (end task-view-end)
+                   (show-task-info-hash-table task-view-show-task-info-hash-table)
+                   (hide-task-children-hash-table task-view-hide-task-children-hash-table)
+                   (y-offset task-view-y-offset)
+                   (task-counter task-view-task-counter)
+                   (hide-completed-tasks task-view-hide-completed-tasks)
+                   (hide-non-critical-tasks task-view-hide-non-critical-tasks))
           task-view
+    (let* ((pane-task-length (local-time:timestamp-difference end start))
+           (pane-width (rectangle-width (sheet-region pane)))
+           (pane-unit (/ pane-task-length pane-width))
+           (task-height 16)
+           (task-padding 4)
+           (bottom-margin 6)
+           (x-zoom (zoom-x-level pane))
+           (y-zoom (zoom-y-level pane)))
       (let* ((task-start (or (start task) start))
-             (task-end (or (end task) end))
+             (progress (task-progress task))
+             (task-end (or (end task)
+                           (if (and progress (>= progress 1.0))
+                               task-start
+                               end)))
              (expanded (gethash task show-task-info-hash-table))
              (hide-task-children (gethash task hide-task-children-hash-table)))
         (let ((xstart (/ (local-time:timestamp-difference task-start start) pane-unit))
@@ -221,23 +243,53 @@
                                                      (mod task-counter (length *task-colors*)))
                                     :border-color (elt *task-border-colors*
                                                        (mod task-counter (length *task-border-colors*)))
-                                    :expanded expanded))
+                                    :expanded expanded
+                                    :row-color (mod-elt *task-background-colors* task-counter)
+                                    :task-padding task-padding))
                      (declare (ignore x1 x2))
-                     (incf y-offset (+ (- y2 y1) task-padding))
+                     (incf y-offset (+ (- y2 y1) 0))
                      (incf task-counter))
                    (unless hide-task-children
                      (loop for child across (gantt::children task)
-                        do (present child 'task))))))
+                        do (let ((child-end (end child))
+                                 (child-progress (task-progress child))
+                                 (child-critical (gantt:task-critical child)))
+                             (unless (or
+                                      (and hide-non-critical-tasks
+                                           (not (or child-critical
+                                                    (find-task t child :key #'gantt:task-critical))))
+                                      (and hide-completed-tasks
+                                              child-progress
+                                              (>= child-progress 1.0)))
+                               (unless (and child-end
+                                            (local-time:timestamp< child-end start)))
+                               (present child 'task))))))))
+            #+nil
             (with-bounding-rectangle* (x1 y1 x2 y2)
                 presentation
-              (draw-rectangle* pane x1 y1 x2 y2 :filled nil))))))))
+              (draw-rectangle* pane x1 y1 x2 y2 :filled nil))
+            presentation))))))
 
 (define-presentation-method present (task (type top-level-task) pane
                                           (task-view task-view) &key)
   (setf (task-view-task-counter task-view) 0)
-  (setf (task-view-y-offset task-view) 40)
-  (loop for child across (gantt::children task)
-     do (present child 'task)))
+  (setf (task-view-y-offset task-view) 20)
+  (let* ((str (name task))
+         (family :sans-serif)
+         (face :bold)
+         (size :huge)
+         (style (make-text-style family face size)))
+    (multiple-value-bind (width height)
+        (text-size pane str :text-style style)
+      (declare (ignore width))
+      (with-bounding-rectangle* (x1 y1 x2 y2)
+          pane
+        (declare (ignore y1 y2))
+        (draw-text* pane str (+ x1 (/ (- x2 x1) 2)) 10 :align-x :center :align-y :top :text-style style))
+      (incf (task-view-y-offset task-view) height)
+      (loop for child across (gantt::children task)
+         for task-group-counter from 0
+         do (let ((task-group (present child 'task))))))))
 
 (defun gantlet-display (frame pane)
   (declare (ignore frame))
@@ -316,8 +368,8 @@
         #+nil
         (notify-user *application-frame*
 	             (format nil "~A."
-		             (gantt::name task))
-	             :title (format nil "Information on ~A" (gantt::name task))
+		             (name task))
+	             :title (format nil "Information on ~A" (name task))
 	             :text-style '(:serif :roman 15))))))
 
 (define-gesture-name show-task-info-gesture :pointer-button (:left))
@@ -366,6 +418,38 @@
       (let ((region (or (pane-viewport-region gantlet-pane)
                         (sheet-region gantlet-pane))))
         (when region (handle-repaint gantlet-pane region))))))
+
+(define-gantlet-app-command (com-hide-completed-tasks :name t) ()
+  (let* ((gantlet-pane (find-pane-named *application-frame* 'gantlet))
+         (task-view (stream-default-view gantlet-pane)))
+    (with-accessors ((hide-completed-tasks task-view-hide-completed-tasks))
+        task-view
+      (setf hide-completed-tasks t)
+      (redraw *application-frame* gantlet-pane))))
+
+(define-gantlet-app-command (com-show-completed-tasks :name t) ()
+  (let* ((gantlet-pane (find-pane-named *application-frame* 'gantlet))
+         (task-view (stream-default-view gantlet-pane)))
+    (with-accessors ((hide-completed-tasks task-view-hide-completed-tasks))
+        task-view
+      (setf hide-completed-tasks nil)
+      (redraw *application-frame* gantlet-pane))))
+
+(define-gantlet-app-command (com-hide-non-critical-tasks :name t) ()
+  (let* ((gantlet-pane (find-pane-named *application-frame* 'gantlet))
+         (task-view (stream-default-view gantlet-pane)))
+    (with-accessors ((hide-non-critical-tasks task-view-hide-non-critical-tasks))
+        task-view
+      (setf hide-non-critical-tasks t)
+      (redraw *application-frame* gantlet-pane))))
+
+(define-gantlet-app-command (com-show-non-critical-tasks :name t) ()
+  (let* ((gantlet-pane (find-pane-named *application-frame* 'gantlet))
+         (task-view (stream-default-view gantlet-pane)))
+    (with-accessors ((hide-non-critical-tasks task-view-hide-non-critical-tasks))
+        task-view
+      (setf hide-non-critical-tasks nil)
+      (redraw *application-frame* gantlet-pane))))
 
 (defmethod true-viewport-region ((pane gantlet-pane))
   (untransform-region (sheet-native-transformation pane)
@@ -416,6 +500,7 @@
       (let ((view-bounds (true-viewport-region pane)))
         (with-bounding-rectangle* (x1 y1 x2 y2)
             view-bounds
+          #+nil
           (draw-rectangle* pane
                            (+ x1 10) (+ y1 10)
                            (- x2 10) (- y2 10)
