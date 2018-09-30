@@ -91,7 +91,6 @@
   (:panes
    (gantlet gantlet-pane
             :display-function 'display-gantlet
-            #| :default-view +gantt-chart-view+ |#
             :display-time :command)
    (resource-list
     (make-pane 'list-pane
@@ -231,6 +230,7 @@
                                           (task-view task-view) &key)
 
 
+  #+nil
   (let ((gantlet-pane (find-pane-named *application-frame* 'gantlet)))
     (with-bounding-rectangle* (viewport-x1 viewport-y1 viewport-x2 viewport-y2)
         (pane-viewport-region gantlet-pane)
