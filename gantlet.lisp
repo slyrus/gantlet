@@ -103,11 +103,11 @@
 
 (defparameter *task-border-colors*
   (list (make-rgb-color 0.6 0.6 0.6)
-        (make-rgb-color 0.4 0.4 0.4)))
+        (make-rgb-color 0.5 0.5 0.5)))
 
 (defparameter *task-background-colors*
-  (list (make-rgb-color 0.95 0.95 0.95)
-        (make-rgb-color 0.98 0.98 0.98)))
+  (list (make-rgb-color 0.93 0.93 0.93)
+        (make-rgb-color 0.96 0.96 0.96)))
 
 (defparameter *critical-task-color*
   nil
@@ -116,15 +116,17 @@
 (defparameter *critical-task-border-color*
   (make-rgb-color 1 0.0 0.0))
 
+(defun lighten-color (color lightness)
+  (multiple-value-bind (r g b)
+      (color-rgb color)
+    (make-rgb-color
+     (+ r (* (- 1 r) lightness))
+     (+ g (* (- 1 g) lightness))
+     (+ b (* (- 1 b) lightness)))))
+
 (defparameter *task-colors*
   (mapcar (lambda (color)
-            (multiple-value-bind (r g b)
-                (color-rgb color)
-              (let ((lightness 0.7))
-                (make-rgb-color
-                 (+ r (* (- 1 r) lightness))
-                 (+ g (* (- 1 g) lightness))
-                 (+ b (* (- 1 b) lightness))))))
+            (lighten-color color 0.6))
           *task-border-colors*))
 
 (defun date-string (date)
