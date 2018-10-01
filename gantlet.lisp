@@ -10,6 +10,7 @@
    (end :initarg :end :accessor task-view-end)
    (hide-completed-tasks :initform t :initarg :hide-completed-tasks :accessor task-view-hide-completed-tasks)
    (hide-non-critical-tasks :initform nil :initarg :hide-non-critical-tasks :accessor task-view-hide-non-critical-tasks)
+   (x-offset :initarg :x-offset :accessor task-view-x-offset :initform 5)
    (y-offset :initarg :y-offset :accessor task-view-y-offset :initform 0)
    (task-counter :initarg :task-counter :accessor task-view-task-counter :initform 0)
    (show-task-info-hash-table :accessor task-view-show-task-info-hash-table :initform (make-hash-table))
@@ -92,7 +93,7 @@
 (defclass task-output-record (standard-presentation)
   ((task :initarg :task :accessor task)))
 
-(defparameter *task-border-colors*
+(defparameter *task-border-colors-rgb*
   (list (make-rgb-color 0.5 0.5 1.0)
         (make-rgb-color 0.5 1.0 0.5)
         (make-rgb-color 1.0 0.5 0.5)
@@ -100,9 +101,20 @@
         (make-rgb-color 0.5 0.75 0.75)
         (make-rgb-color 0.5 0.5 0.75)))
 
+(defparameter *task-border-colors*
+  (list (make-rgb-color 0.6 0.6 0.6)
+        (make-rgb-color 0.4 0.4 0.4)))
+
 (defparameter *task-background-colors*
   (list (make-rgb-color 0.95 0.95 0.95)
         (make-rgb-color 0.98 0.98 0.98)))
+
+(defparameter *critical-task-color*
+  nil
+  #+(or) (make-rgb-color 1 0.5 0.5))
+
+(defparameter *critical-task-border-color*
+  (make-rgb-color 1 0.0 0.0))
 
 (defparameter *task-colors*
   (mapcar (lambda (color)
@@ -118,8 +130,16 @@
 (defun date-string (date)
   (local-time:format-timestring nil date :format local-time:+iso-8601-date-format+))
 
+;;
+;;
+;; Presentations
+
+;;
+;; task-output-record - nothing exciting happens here now
 (define-presentation-type task-output-record ())
 
+;;
+;; top-level-task -- use this handle the backgrounds, etc...
 (defclass top-level-task (standard-presentation)
   ())
 
@@ -129,8 +149,22 @@
 (defmethod output-record-refined-position-test ((record top-level-task) x y)
   nil)
 
+;;
+;; mute-presentation - children of this tree are not highlighted
+(defclass mute-presentation (standard-presentation)
+  ())
+
+(define-presentation-type mute-presentation ())
+
+(defmethod highlight-output-record-tree ((record mute-presentation) stream state)
+  nil)
+
+
+;; task-group presentation
 (define-presentation-type task-group ())
 
+;;
+;; actual drawing routines
 (defun draw-task (task pane x1 y1 x2 y2
                   &key fill-color
                        border-color
@@ -168,25 +202,45 @@
                task
                'task
                :record-type 'task-output-record)
-            (draw-rectangle* pane x1 y1 x2 y2 :ink fill-color)
-            (draw-rectangle* pane x1 y1 x2 y2
-                             :ink border-color :filled nil :line-thickness 3)
-            (let ((text-x-offset (if (> max-width (- x2 x1))
-                                     (+ x2 text-left-margin)
-                                     (+ x1 text-left-margin))))
-              (loop for (text width height) in (reverse text-list)
-                 with y-offset = y1
-                 do
-                   (draw-text* pane text
-                               text-x-offset
-                               (if expanded
-                                   (+ y-offset text-top-margin)
-                                   (+ y-offset (/ (- y2 y1) 2)))
-                               :align-y (if expanded :top :center)
-                               :ink +black+
-                               :text-size name-size
-                               :text-style style)
-                   (incf y-offset height)))))))))
+            (climi::invoke-surrounding-output-with-border
+	     pane
+             (lambda (pane)
+               (draw-rectangle* pane x1 y1 x2 y2 :ink fill-color))
+             :shape :rounded
+             :filled t
+             :ink border-color
+             :outline-ink border-color
+             :line-thickness 3
+             :padding-left 2
+             :padding-right 1
+             :padding-top 2
+             :padding-bottom 1)
+            (let ((text-x-offset (if (> max-width (- x2 x1 7))
+                                     (+ x2 text-left-margin 2)
+                                     (+ x1 text-left-margin)))
+                  (y-offset y1))
+              (flet ((draw-line (text-spec)
+                       (destructuring-bind (text width height)
+                           text-spec
+                         (declare (ignore width))
+                         (draw-text* pane
+                                     text
+                                     text-x-offset
+                                     (if expanded
+                                         (+ y-offset text-top-margin)
+                                         (+ y-offset (/ (- y2 y1) 2)))
+                                     :align-y (if expanded :top :center)
+                                     :ink +black+
+                                     :text-size name-size
+                                     :text-style style)
+                         (incf y-offset height))))
+                (let ((lines (reverse text-list)))
+                  (when (car lines)
+                    (draw-line (car lines))
+                    (with-output-as-presentation
+                        (pane nil 'mute-presentation :record-type 'mute-presentation)
+                      (loop for text-spec in (cdr lines)
+                         do (draw-line text-spec)))))))))))))
 
 ;;
 ;; display strategy
@@ -206,6 +260,7 @@
                    (show-task-info-hash-table task-view-show-task-info-hash-table)
                    (hide-task-children-hash-table task-view-hide-task-children-hash-table)
                    (y-offset task-view-y-offset)
+                   (x-offset task-view-x-offset)
                    (task-counter task-view-task-counter)
                    (hide-completed-tasks task-view-hide-completed-tasks)
                    (hide-non-critical-tasks task-view-hide-non-critical-tasks))
@@ -237,7 +292,15 @@
              (expanded (gethash task show-task-info-hash-table))
              (hide-task-children (gethash task hide-task-children-hash-table)))
         (let ((xstart (/ (local-time:timestamp-difference task-start start) pane-unit))
-              (xend (/ (local-time:timestamp-difference task-end start) pane-unit)))
+              (xend (/ (local-time:timestamp-difference task-end start) pane-unit))
+              (task-color (if (and (task-critical task)
+                                   *critical-task-color*)
+                              *critical-task-color*
+                              (mod-elt *task-colors* task-counter)))
+              (task-border-color (if (and (task-critical task)
+                                   *critical-task-border-color*)
+                              *critical-task-border-color*
+                              (mod-elt *task-border-colors* task-counter))))
           (let ((presentation
                  (with-output-as-presentation
                      (t
@@ -246,14 +309,12 @@
                    (with-bounding-rectangle* (x1 y1 x2 y2)
                      (draw-task task
                                 pane
-                                (* x-zoom (max 0 xstart))
+                                (+ x-offset (* x-zoom (max 0 xstart)))
                                 y-offset
-                                (* x-zoom (min xend pane-width))
+                                (+ x-offset (* x-zoom (min xend pane-width)))
                                 (+ y-offset (* y-zoom task-height) bottom-margin)
-                                :fill-color (elt *task-colors*
-                                                 (mod task-counter (length *task-colors*)))
-                                :border-color (elt *task-border-colors*
-                                                   (mod task-counter (length *task-border-colors*)))
+                                :fill-color task-color
+                                :border-color task-border-color
                                 :expanded expanded)
                      (declare (ignore x1 x2))
                      (incf y-offset (+ (- y2 y1) task-padding))
@@ -278,6 +339,7 @@
 (define-presentation-method present (task (type top-level-task) pane
                                           (task-view task-view) &key)
   (setf (task-view-task-counter task-view) 0)
+  (setf (task-view-x-offset task-view) 5)
   (setf (task-view-y-offset task-view) 20)
   (let* ((str (name task))
          (family :sans-serif)
@@ -326,7 +388,8 @@
   (:panes
    (gantlet gantlet-pane
             :display-function 'gantlet-display
-            :display-time :command)
+            :display-time :command
+            :height 600)
    (resource-list
     (make-pane 'list-pane
 	       :value 'clim:region-intersection
@@ -354,11 +417,11 @@
    (int :interactor
         :height 200
         :max-height 200
-        :width 800))
+        :width 1200))
   (:layouts
    (default (vertically ()
               (horizontally ()
-                (4/5 (vertically ()
+                (5/6 (vertically ()
                         (horizontally ()
                           (scrolling ()
                             gantlet)
@@ -366,7 +429,7 @@
                             zoom-y))
                         (labelling (:label "Zoom X")
                           zoom-x)))
-                (1/5 (labelling (:label "Resources")
+                (1/6 (labelling (:label "Resources")
                        resource-list)))
               int))))
 
@@ -508,8 +571,10 @@
 
 (defvar *gantlet-application*)
 
-(defun gantlet-main ()
-  (let ((frame (setf *gantlet-application* (make-application-frame 'gantlet-app))))
+(defun gantlet-main (&key (height 1200) (width 1600))
+  (let ((frame (setf *gantlet-application* (make-application-frame 'gantlet-app
+                                                                   :height height
+                                                                   :width width))))
     (values frame
             (bt:make-thread
              (lambda ()
