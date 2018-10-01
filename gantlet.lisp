@@ -172,11 +172,11 @@
                        border-color
                        (expanded t))
   (let* ((text-left-margin 6)
-         (text-top-margin 4)
-         (name-size :large)
+         (text-top-margin 6)
+         (text-size :large)
          (family nil)
          (face :roman)
-         (style (make-text-style family face name-size)))
+         (style (make-text-style family face text-size)))
     ;; first we need to compute text sizes, then we can draw the
     ;; boxes, and then, finally, the strings that go in the boxes.
     (let ((name (name task))
@@ -188,10 +188,18 @@
                  (push (list str width (+ text-top-margin height)) text-list))))
         (add-text name)
         (when expanded
-          (alexandria:when-let ((start-date (start task)))
-            (add-text (format nil "Start: ~A" (date-string start-date))))
-          (alexandria:when-let ((end-date (end task)))
-            (add-text (format nil "End: ~A" (date-string end-date))))
+          (with-accessors ((start-date start)
+                           (end-date end)
+                           (notes task-notes))
+              task
+            (when start-date
+                (add-text (format nil "Start: ~A" (date-string start-date))))
+            (when end-date
+              (add-text (format nil "End: ~A" (date-string end-date))))
+            (when notes
+              (loop for note in notes
+                 do
+                   (add-text (format nil "~A" note)))))
           (let ((resources (task-resources task)))
             (loop for resource in resources
                do
@@ -221,7 +229,7 @@
                                      (+ x2 text-left-margin 2)
                                      (+ x1 text-left-margin)))
                   (y-offset y1))
-              (flet ((draw-line (text-spec)
+              (flet ((draw-text-line (text-spec)
                        (destructuring-bind (text width height)
                            text-spec
                          (declare (ignore width))
@@ -233,16 +241,15 @@
                                          (+ y-offset (/ (- y2 y1) 2)))
                                      :align-y (if expanded :top :center)
                                      :ink +black+
-                                     :text-size name-size
                                      :text-style style)
                          (incf y-offset height))))
                 (let ((lines (reverse text-list)))
                   (when (car lines)
-                    (draw-line (car lines))
+                    (draw-text-line (car lines))
                     (with-output-as-presentation
                         (pane nil 'mute-presentation :record-type 'mute-presentation)
                       (loop for text-spec in (cdr lines)
-                         do (draw-line text-spec)))))))))))))
+                         do (draw-text-line text-spec)))))))))))))
 
 ;;
 ;; display strategy
@@ -270,7 +277,7 @@
     (let* ((pane-task-length (local-time:timestamp-difference end start))
            (pane-width (rectangle-width (sheet-region pane)))
            (pane-unit (/ pane-task-length pane-width))
-           (task-height 16)
+           (task-height 10)
            (task-padding 4)
            (bottom-margin 6)
            (x-zoom (zoom-x-level pane))
@@ -342,7 +349,7 @@
                                           (task-view task-view) &key)
   (setf (task-view-task-counter task-view) 0)
   (setf (task-view-x-offset task-view) 5)
-  (setf (task-view-y-offset task-view) 20)
+  (setf (task-view-y-offset task-view) 26)
   (let* ((str (name task))
          (family :sans-serif)
          (face :bold)
@@ -370,11 +377,18 @@
                              (task-padding 4))
                          (with-bounding-rectangle* (x1 y1 x2 y2)
                              task-record
-                           (declare (ignore x1 x2))
                            (with-bounding-rectangle* (px1 py1 px2 py2)
                                pane
                              (declare (ignore py1 py2))
-                             (draw-rectangle* pane px1 y1 px2 (+ y2 task-padding) :ink row-color)))))))
+                             (draw-rectangle* pane px1 y1 px2 (+ y2 task-padding) :ink row-color))
+                           #+(or)
+                           (draw-rounded-rectangle* pane x1 y1 (+ x2 3) (+ y2 3)
+                                                    :ink (lighten-color row-color 0.4)
+                                                    :filled t)
+                           (draw-rounded-rectangle* pane x1 y1 (+ x2 3) (+ y2 3)
+                                                    :ink +gray50+
+                                                    :filled nil
+                                                    :line-thickness 2))))))
                 (add-output-record task-record background-record)
                 (stream-add-output-record pane background-record)))))))
 
