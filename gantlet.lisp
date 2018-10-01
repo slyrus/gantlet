@@ -120,22 +120,26 @@
 
 (define-presentation-type task-output-record ())
 
+(defclass top-level-task (standard-presentation)
+  ())
+
 (define-presentation-type top-level-task ()
   :inherit-from 'task)
+
+(defmethod output-record-refined-position-test ((record top-level-task) x y)
+  nil)
 
 (define-presentation-type task-group ())
 
 (defun draw-task (task pane x1 y1 x2 y2
                   &key fill-color
                        border-color
-                       (expanded t)
-                       row-color
-                       (task-padding 0))
+                       (expanded t))
   (let* ((text-left-margin 6)
          (text-top-margin 4)
          (name-size :large)
          (family nil)
-         (face :bold)
+         (face :roman)
          (style (make-text-style family face name-size)))
     ;; first we need to compute text sizes, then we can draw the
     ;; boxes, and then, finally, the strings that go in the boxes.
@@ -159,11 +163,6 @@
         (let ((height (apply #'+ (mapcar #'third text-list)))
               (max-width (apply #'max (mapcar #'second text-list))))
           (incf y2 height)
-          (when row-color
-            (with-bounding-rectangle* (px1 py1 px2 py2)
-                pane
-              (declare (ignore py1 py2))
-              (draw-rectangle* pane px1 y1 px2 (+ y2 task-padding) :ink row-color)))
           (with-output-as-presentation
               (t
                task
@@ -171,7 +170,7 @@
                :record-type 'task-output-record)
             (draw-rectangle* pane x1 y1 x2 y2 :ink fill-color)
             (draw-rectangle* pane x1 y1 x2 y2
-                             :ink border-color :filled nil :line-thickness 2)
+                             :ink border-color :filled nil :line-thickness 3)
             (let ((text-x-offset (if (> max-width (- x2 x1))
                                      (+ x2 text-left-margin)
                                      (+ x1 text-left-margin))))
@@ -218,13 +217,23 @@
            (task-padding 4)
            (bottom-margin 6)
            (x-zoom (zoom-x-level pane))
-           (y-zoom (zoom-y-level pane)))
-      (let* ((task-start (or (start task) start))
+           (y-zoom (zoom-y-level pane))
+           (no-dates (and (null (start task))
+                          (null (end task)))))
+      (let* ((task-start (cond ((start task))
+                               ((gantt::first-child-task-start task)
+                                (gantt::first-child-task-start task))
+                               (t start)))
              (progress (task-progress task))
-             (task-end (or (end task)
-                           (if (and progress (>= progress 1.0))
-                               task-start
-                               end)))
+             (task-end (cond ((end task)
+                              (end task))
+                             ((and progress (>= progress 1.0))
+                              task-start)
+                             ((gantt::last-child-task-end task)
+                              (gantt::last-child-task-end task))
+                             (no-dates
+                              task-start)
+                             (t end)))
              (expanded (gethash task show-task-info-hash-table))
              (hide-task-children (gethash task hide-task-children-hash-table)))
         (let ((xstart (/ (local-time:timestamp-difference task-start start) pane-unit))
@@ -245,11 +254,9 @@
                                                  (mod task-counter (length *task-colors*)))
                                 :border-color (elt *task-border-colors*
                                                    (mod task-counter (length *task-border-colors*)))
-                                :expanded expanded
-                                :row-color (mod-elt *task-background-colors* task-counter)
-                                :task-padding task-padding)
+                                :expanded expanded)
                      (declare (ignore x1 x2))
-                     (incf y-offset (+ (- y2 y1) 0))
+                     (incf y-offset (+ (- y2 y1) task-padding))
                      (incf task-counter))
                    (unless hide-task-children
                      (loop for child across (gantt::children task)
@@ -266,10 +273,6 @@
                                (unless (and child-end
                                             (local-time:timestamp< child-end start)))
                                (present child 'task))))))))
-            #+nil
-            (with-bounding-rectangle* (x1 y1 x2 y2)
-                presentation
-              (draw-rectangle* pane x1 y1 x2 y2 :filled nil))
             presentation))))))
 
 (define-presentation-method present (task (type top-level-task) pane
@@ -294,7 +297,22 @@
       (incf (task-view-y-offset task-view) height)
       (loop for child across (gantt::children task)
          for task-group-counter from 0
-         do (let ((task-group (present child 'task))))))))
+         do (let ((task-record
+                   (with-output-to-output-record (pane)
+                     (present child 'task))))
+              (let ((background-record
+                     (with-output-to-output-record (pane)
+                       (let ((row-color (mod-elt *task-background-colors* task-group-counter))
+                             (task-padding 4))
+                         (with-bounding-rectangle* (x1 y1 x2 y2)
+                             task-record
+                           (declare (ignore x1 x2))
+                           (with-bounding-rectangle* (px1 py1 px2 py2)
+                               pane
+                             (declare (ignore py1 py2))
+                             (draw-rectangle* pane px1 y1 px2 (+ y2 task-padding) :ink row-color)))))))
+                (add-output-record task-record background-record)
+                (stream-add-output-record pane background-record)))))))
 
 (defun gantlet-display (frame pane)
   (declare (ignore frame))
