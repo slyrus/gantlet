@@ -88,7 +88,7 @@
       (setf (zoom-y-level pane) scale)
       (setf (pane-needs-redisplay pane) t)
       (redraw *application-frame* pane)
-      #+nil (repaint-sheet pane +everywhere+))))
+      (repaint-sheet pane +everywhere+))))
 
 (defclass task-output-record (standard-presentation)
   ((task :initarg :task :accessor task)))
