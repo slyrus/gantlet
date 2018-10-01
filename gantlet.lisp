@@ -384,9 +384,8 @@
           :gesture show-task-info-gesture
           :menu nil
           :tester ((object presentation event context-type)
-                   (declare (ignore presentation event))
-                   (break)
-                   (print context-type *debug-io*)
+                   (declare (ignore presentation event context-type))
+                   #+(or) (print context-type *debug-io*)
                    (taskp object))
           :documentation "Show info for this task.")
     (object)
