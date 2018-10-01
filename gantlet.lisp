@@ -9,7 +9,7 @@
    (start :initarg :start :accessor task-view-start)
    (end :initarg :end :accessor task-view-end)
    (hide-completed-tasks :initform t :initarg :hide-completed-tasks :accessor task-view-hide-completed-tasks)
-   (hide-non-critical-tasks :initform t :initarg :hide-non-critical-tasks :accessor task-view-hide-non-critical-tasks)
+   (hide-non-critical-tasks :initform nil :initarg :hide-non-critical-tasks :accessor task-view-hide-non-critical-tasks)
    (y-offset :initarg :y-offset :accessor task-view-y-offset :initform 0)
    (task-counter :initarg :task-counter :accessor task-view-task-counter :initform 0)
    (show-task-info-hash-table :accessor task-view-show-task-info-hash-table :initform (make-hash-table))
