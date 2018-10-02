@@ -35,4 +35,7 @@ To run this:
         (gantlet::set-pane-task gantlet-pane gantt-example::*example-project*)
         (gantlet::redraw app gantlet-pane)))
 
+Unfortunately, one must still manually redraw the application pane to
+see the data. Select Redraw from the Gantt menu to see the data.
+
 More documentation to follow.
