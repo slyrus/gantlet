@@ -113,6 +113,9 @@
   nil
   #+(or) (make-rgb-color 1 0.5 0.5))
 
+(defparameter *complete-task-color*
+  (make-rgb-color 0.5 0.5 1))
+
 (defparameter *critical-task-border-color*
   (make-rgb-color 1 0.0 0.0))
 
@@ -179,77 +182,88 @@
          (style (make-text-style family face text-size)))
     ;; first we need to compute text sizes, then we can draw the
     ;; boxes, and then, finally, the strings that go in the boxes.
-    (let ((name (name task))
-          (text-list))
-      (flet ((add-text (str)
-               (multiple-value-bind (width height final-x final-y baseline)
-	           (text-size pane str :text-style style)
-                 (declare (ignore final-x final-y baseline))
-                 (push (list str width (+ text-top-margin height)) text-list))))
-        (add-text name)
-        (when expanded
-          (with-accessors ((start-date start)
-                           (end-date end)
-                           (notes task-notes))
-              task
+
+    (with-accessors ((start-date start)
+                     (end-date end)
+                     (notes task-notes)
+                     (progress task-progress)
+                     (name name))
+        task
+      (let (text-list)
+        (flet ((add-text (str)
+                 (multiple-value-bind (width height final-x final-y baseline)
+	             (text-size pane str :text-style style)
+                   (declare (ignore final-x final-y baseline))
+                   (push (list str width (+ text-top-margin height)) text-list))))
+          (add-text name)
+          (when expanded
             (when start-date
-                (add-text (format nil "Start: ~A" (date-string start-date))))
+              (add-text (format nil "Start: ~A" (date-string start-date))))
             (when end-date
               (add-text (format nil "End: ~A" (date-string end-date))))
             (when notes
               (loop for note in notes
                  do
-                   (add-text (format nil "~A" note)))))
-          (let ((resources (task-resources task)))
-            (loop for resource in resources
-               do
-                 (add-text (format nil "Resource: ~A" (name resource))))))
-        (let ((height (apply #'+ (mapcar #'third text-list)))
-              (max-width (apply #'max (mapcar #'second text-list))))
-          (incf y2 height)
-          (with-output-as-presentation
-              (t
-               task
-               'task
-               :record-type 'task-output-record)
-            (climi::invoke-surrounding-output-with-border
-	     pane
-             (lambda (pane)
-               (draw-rectangle* pane x1 y1 x2 y2 :ink fill-color))
-             :shape :rounded
-             :filled t
-             :ink border-color
-             :outline-ink border-color
-             :line-thickness 3
-             :padding-left 2
-             :padding-right 1
-             :padding-top 2
-             :padding-bottom 1)
-            (let ((text-x-offset (if (> max-width (- x2 x1 7))
-                                     (+ x2 text-left-margin 2)
-                                     (+ x1 text-left-margin)))
-                  (y-offset y1))
-              (flet ((draw-text-line (text-spec)
-                       (destructuring-bind (text width height)
-                           text-spec
-                         (declare (ignore width))
-                         (draw-text* pane
-                                     text
-                                     text-x-offset
-                                     (if expanded
-                                         (+ y-offset text-top-margin)
-                                         (+ y-offset (/ (- y2 y1) 2)))
-                                     :align-y (if expanded :top :center)
-                                     :ink +black+
-                                     :text-style style)
-                         (incf y-offset height))))
-                (let ((lines (reverse text-list)))
-                  (when (car lines)
-                    (draw-text-line (car lines))
-                    (with-output-as-presentation
-                        (pane nil 'mute-presentation :record-type 'mute-presentation)
-                      (loop for text-spec in (cdr lines)
-                         do (draw-text-line text-spec)))))))))))))
+                   (add-text (format nil "~A" note))))
+            (let ((resources (task-resources task)))
+              (loop for resource in resources
+                 do
+                   (add-text (format nil "Resource: ~A" (name resource))))))
+          (let ((height (apply #'+ (mapcar #'third text-list)))
+                (max-width (apply #'max (mapcar #'second text-list))))
+            (incf y2 height)
+            (with-output-as-presentation
+                (t
+                 task
+                 'task
+                 :record-type 'task-output-record)
+              (climi::invoke-surrounding-output-with-border
+	       pane
+               (lambda (pane)
+                 (draw-rectangle* pane x1 y1 x2 y2 :ink fill-color))
+               :shape :rounded
+               :filled t
+               :ink border-color
+               :outline-ink border-color
+               :line-thickness 3
+               :padding-left 2
+               :padding-right 1
+               :padding-top 2
+               :padding-bottom 1)
+              (with-output-as-presentation
+                  (pane nil 'mute-presentation :record-type 'mute-presentation)
+                (when progress
+                  (draw-rectangle* pane
+                                   x1
+                                   y1
+                                   (+ (* (- x2 x1) progress) x1)
+                                   (+ y1 5)
+                                   :ink *complete-task-color* :filled t)))
+              (let ((text-x-offset (if (> max-width (- x2 x1 7))
+                                       (+ x2 text-left-margin 2)
+                                       (+ x1 text-left-margin)))
+                    (y-offset y1))
+                (flet ((draw-text-line (text-spec)
+                         (destructuring-bind (text width height)
+                             text-spec
+                           (declare (ignore width))
+                           (draw-text* pane
+                                       text
+                                       text-x-offset
+                                       (if expanded
+                                           (+ y-offset text-top-margin)
+                                           (+ y-offset (/ (- y2 y1) 2)))
+                                       :align-y (if expanded :top :center)
+                                       :ink +black+
+                                       :text-style style)
+                           (incf y-offset height))))
+                  (let ((lines (reverse text-list)))
+                    (when (car lines)
+                      (draw-text-line (car lines))
+                      (with-output-as-presentation
+                          (pane nil 'mute-presentation :record-type 'mute-presentation)
+                        (loop for text-spec in (cdr lines)
+                           do (draw-text-line text-spec))))))))))))))
 
 ;;
 ;; display strategy
@@ -291,7 +305,7 @@
              (progress (task-progress task))
              (task-end (cond ((end task)
                               (end task))
-                             ((and progress (>= progress 1.0))
+                             #+nil ((and progress (>= progress 1.0))
                               task-start)
                              ((gantt::last-child-task-end task)
                               (gantt::last-child-task-end task))
@@ -307,9 +321,11 @@
                               *critical-task-color*
                               (mod-elt *task-colors* task-counter)))
               (task-border-color (if (and (task-critical task)
-                                   *critical-task-border-color*)
-                              *critical-task-border-color*
-                              (mod-elt *task-border-colors* task-counter))))
+                                          *critical-task-border-color*
+                                          (or (null progress)
+                                              (< progress 1.0)))
+                                     *critical-task-border-color*
+                                     (mod-elt *task-border-colors* task-counter))))
           (let ((presentation
                  (with-output-as-presentation
                      (t
@@ -363,7 +379,7 @@
              (rough-years (/ days 365)))
         (cond (;; here we should show things by year and maybe quarter
                (> rough-years 3))
-              ((> rough-months 6)
+              ((> rough-months 24)
                (draw-rectangle* pane
                                 0 (task-view-y-offset task-view)
                                 100 (+ (task-view-y-offset task-view) 40)
