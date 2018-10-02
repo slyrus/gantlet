@@ -708,3 +708,20 @@
       (clim:draw-rectangle* pane 0 0 1000 1000
                             :filled t
                             :ink clim:+background-ink+))))
+
+(defun write-task-to-pdf-file (task file &key (device-type '(1600 1000)))
+  (with-open-file (file-stream file :direction :output
+                               :if-exists :supersede
+                               :element-type '(unsigned-byte 8))
+    (clim-pdf::with-output-to-pdf-stream
+        (stream file-stream
+                :header-comments '(:title (name task))
+                :scale-to-fit t
+                :device-type device-type)
+      (setf (stream-default-view stream)
+            (make-instance 'task-view
+                           :task task
+                           :start (start task)
+                           :end (end task)))
+      (let ((*standard-output* stream))
+        (present task 'top-level-task)))))
