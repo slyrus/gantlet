@@ -409,15 +409,15 @@
                         do
                           (local-time:with-decoded-timestamp (:year year :month month)
                               (elt month-starts i)
-                            (draw-text* pane
-                                        (format nil "~A ~A"
-                                                (aref local-time:+short-month-names+ month)
-                                                year)
-                                        (+ (* x-zoom (elt month-coords i)) 4)
-                                        55
-                                        :align-y :top
-                                        :text-style timeline-style)
                             (when (< i (1- nmonths))
+                              (draw-text* pane
+                                          (format nil "~A ~A"
+                                                  (aref local-time:+short-month-names+ month)
+                                                  year)
+                                          (+ (* x-zoom (elt month-coords i)) 4)
+                                          55
+                                          :align-y :top
+                                          :text-style timeline-style)
                               (draw-rectangle* pane
                                                (* x-zoom (elt month-coords i))
                                                (task-view-y-offset task-view)
@@ -453,7 +453,7 @@
     ;; draw timeline
     (draw-timeline pane task-view)
 
-    (incf (task-view-y-offset task-view) 100)
+    (incf (task-view-y-offset task-view) 65)
 
     (loop for child across (gantt::children task)
        for task-group-counter from 0
