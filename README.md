@@ -1,11 +1,11 @@
 
-* Overview
+# Overview
 
 You will also need [Gantt](https://github.com/slyrus/gantt) to run this.
 
-* Prerequisites
+# Prerequisites
 
-** Quicklisp Dependenceies
+## Quicklisp Dependenceies
 
 You can pick up most of the needed libraries from Quicklisp as follows:
 
