@@ -6,6 +6,8 @@
 
 (defclass task-view (view)
   ((task :initarg :task :accessor task-view-task)
+   (zoom-x-level :initform 1.0d0 :accessor zoom-x-level)
+   (zoom-y-level :initform 1.0d0 :accessor zoom-y-level)
    (start :initarg :start :accessor task-view-start)
    (end :initarg :end :accessor task-view-end)
    (hide-completed-tasks :initform t :initarg :hide-completed-tasks :accessor task-view-hide-completed-tasks)
@@ -17,9 +19,7 @@
    (hide-task-children-hash-table :accessor task-view-hide-task-children-hash-table :initform (make-hash-table))))
 
 (defclass gantlet-pane (application-pane table-pane)
-  ((task :initform nil :accessor pane-task)
-   (zoom-x-level :initform 1.0d0 :accessor zoom-x-level)
-   (zoom-y-level :initform 1.0d0 :accessor zoom-y-level)))
+  ((task :initform nil :accessor pane-task)))
 
 (defun set-pane-task (pane task)
   (setf (pane-task pane) task)
@@ -58,7 +58,9 @@
   (declare (optimize (debug 3)))
   (let ((frame (pane-frame gadget)))
     (let ((pane (find-pane-named frame 'gantlet)))
-      (setf (zoom-x-level pane) scale)
+      (let ((view (stream-default-view pane)))
+        (when view
+          (setf (zoom-x-level view) scale)))
       (setf (pane-needs-redisplay pane) t)
 
       ;; 1. find current viewport center
@@ -85,7 +87,9 @@
 (defun zoom-y-callback (gadget scale)
   (let ((frame (pane-frame gadget)))
     (let ((pane (find-pane-named frame 'gantlet)))
-      (setf (zoom-y-level pane) scale)
+      (let ((view (stream-default-view pane)))
+        (when view
+          (setf (zoom-y-level view) scale)))
       (setf (pane-needs-redisplay pane) t)
       (redraw *application-frame* pane)
       (repaint-sheet pane +everywhere+))))
@@ -294,8 +298,8 @@
            (task-height 10)
            (task-padding 4)
            (bottom-margin 6)
-           (x-zoom (zoom-x-level pane))
-           (y-zoom (zoom-y-level pane))
+           (x-zoom (zoom-x-level task-view))
+           (y-zoom (zoom-y-level task-view))
            (no-dates (and (null (start task))
                           (null (end task)))))
       (let* ((task-start (cond ((start task))
@@ -368,7 +372,7 @@
     (let* ((pane-task-length (local-time:timestamp-difference end start))
            (pane-width (rectangle-width (sheet-region pane)))
            (pane-unit (/ pane-task-length pane-width))
-           (x-zoom (zoom-x-level pane))
+           (x-zoom (zoom-x-level task-view))
            (family :sans-serif)
            (face :bold)
            (size :large)
@@ -690,18 +694,17 @@
   (declare (ignore force-p))
   (let ((pane (clim:find-pane-named clim:*application-frame* 'gantlet)))
     (clim:replay (clim:stream-output-history pane) pane)
+    #+nil
     (clim:with-output-recording-options (pane :record nil :draw t)
       (let ((view-bounds (true-viewport-region pane)))
         (with-bounding-rectangle* (x1 y1 x2 y2)
             view-bounds
-          #+nil
           (draw-rectangle* pane
                            (+ x1 10) (+ y1 10)
                            (- x2 10) (- y2 10)
                            :ink +green+
                            :line-thickness 5
                            :filled nil)))
-      #+nil
       (clim:draw-rectangle* pane 0 0 1000 1000
                             :filled t
                             :ink clim:+background-ink+))))
