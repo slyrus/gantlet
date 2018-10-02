@@ -345,6 +345,73 @@
                                (present child 'task))))))))
             presentation))))))
 
+(defun draw-timeline (pane task-view)
+  (with-accessors ((start task-view-start)
+                   (end task-view-end))
+      task-view
+    (let* ((pane-task-length (local-time:timestamp-difference end start))
+           (pane-width (rectangle-width (sheet-region pane)))
+           (pane-unit (/ pane-task-length pane-width))
+           (x-zoom (zoom-x-level pane))
+           (family :sans-serif)
+           (face :bold)
+           (size :large)
+           (timeline-style (make-text-style family face size)))
+      (let* ((days (/ pane-task-length local-time:+seconds-per-day+))
+             (weeks (/ days local-time:+days-per-week+))
+             (rough-months (/ days 30))
+             (rough-years (/ days 365)))
+        (cond (;; here we should show things by year and maybe quarter
+               (> rough-years 3))
+              ((> rough-months 6)
+               (draw-rectangle* pane
+                                0 (task-view-y-offset task-view)
+                                100 (+ (task-view-y-offset task-view) 40)
+                                :ink +red+ :filled t))
+              (;; here we'll show things by month
+               (> weeks 8)
+               (multiple-value-bind (dyear dmonth)
+                   (time-interval::timestamp-decoded-difference end start)
+                 (let ((nmonths (+ (* dyear 12) dmonth 1)))
+                   (let* ((month-starts
+                           (loop for i below nmonths
+                              collect
+                                (local-time:with-decoded-timestamp
+                                    (:year start-year :month start-month)
+                                    start
+                                  (local-time:adjust-timestamp
+                                      (local-time:encode-timestamp 0 0 0 0 1 start-month start-year)
+                                    (:offset :month i)))))
+                          (month-coords
+                           (mapcar (lambda (t1)
+                                     (/ (local-time:timestamp-difference
+                                         t1
+                                         (elt month-starts 0))
+                                        pane-unit))
+                                   month-starts)))
+                     (loop for i below nmonths
+                        do
+                          (local-time:with-decoded-timestamp (:year year :month month)
+                              (elt month-starts i)
+                            (draw-text* pane
+                                        (format nil "~A ~A"
+                                                (aref local-time:+short-month-names+ month)
+                                                year)
+                                        (+ (* x-zoom (elt month-coords i)) 4)
+                                        55
+                                        :align-y :top
+                                        :text-style timeline-style)
+                            (when (< i (1- nmonths))
+                              (draw-rectangle* pane
+                                               (* x-zoom (elt month-coords i))
+                                               (task-view-y-offset task-view)
+                                               (* x-zoom (elt month-coords (1+ i)))
+                                               (+ (task-view-y-offset task-view) 30)
+                                               :ink +red+
+                                               :filled nil))))))))
+              ;; by day?
+              (t ))))))
+
 (define-presentation-method present (task (type top-level-task) pane
                                           (task-view task-view) &key)
   (setf (task-view-task-counter task-view) 0)
@@ -365,32 +432,38 @@
                     (+ x1 (/ (- x2 x1) 2)) 10
                     :align-x :center
                     :align-y :top :text-style style))
-      (incf (task-view-y-offset task-view) height)
-      (loop for child across (gantt::children task)
-         for task-group-counter from 0
-         do (let ((task-record
+      (incf (task-view-y-offset task-view) height))
+
+    ;; draw timeline
+    (draw-timeline pane task-view)
+
+    (incf (task-view-y-offset task-view) 100)
+
+    (loop for child across (gantt::children task)
+       for task-group-counter from 0
+       do (let ((task-record
+                 (with-output-to-output-record (pane)
+                   (present child 'task))))
+            (let ((background-record
                    (with-output-to-output-record (pane)
-                     (present child 'task))))
-              (let ((background-record
-                     (with-output-to-output-record (pane)
-                       (let ((row-color (mod-elt *task-background-colors* task-group-counter))
-                             (task-padding 4))
-                         (with-bounding-rectangle* (x1 y1 x2 y2)
-                             task-record
-                           (with-bounding-rectangle* (px1 py1 px2 py2)
-                               pane
-                             (declare (ignore py1 py2))
-                             (draw-rectangle* pane px1 y1 px2 (+ y2 task-padding) :ink row-color))
-                           #+(or)
-                           (draw-rounded-rectangle* pane x1 y1 (+ x2 3) (+ y2 3)
-                                                    :ink (lighten-color row-color 0.4)
-                                                    :filled t)
-                           (draw-rounded-rectangle* pane x1 y1 (+ x2 3) (+ y2 3)
-                                                    :ink +gray50+
-                                                    :filled nil
-                                                    :line-thickness 2))))))
-                (add-output-record task-record background-record)
-                (stream-add-output-record pane background-record)))))))
+                     (let ((row-color (mod-elt *task-background-colors* task-group-counter))
+                           (task-padding 4))
+                       (with-bounding-rectangle* (x1 y1 x2 y2)
+                           task-record
+                         (with-bounding-rectangle* (px1 py1 px2 py2)
+                             pane
+                           (declare (ignore py1 py2))
+                           (draw-rectangle* pane px1 y1 px2 (+ y2 task-padding) :ink row-color))
+                         #+(or)
+                         (draw-rounded-rectangle* pane x1 y1 (+ x2 3) (+ y2 3)
+                                                  :ink (lighten-color row-color 0.4)
+                                                  :filled t)
+                         (draw-rounded-rectangle* pane x1 y1 (+ x2 3) (+ y2 3)
+                                                  :ink +gray50+
+                                                  :filled nil
+                                                  :line-thickness 2))))))
+              (add-output-record task-record background-record)
+              (stream-add-output-record pane background-record))))))
 
 (defun gantlet-display (frame pane)
   (declare (ignore frame))
