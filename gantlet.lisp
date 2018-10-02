@@ -397,7 +397,7 @@
                                     start
                                   (local-time:adjust-timestamp
                                       (local-time:encode-timestamp 0 0 0 0 1 start-month start-year)
-                                    (:offset :month i)))))
+                                    (:offset :month (1+ i))))))
                           (month-coords
                            (mapcar (lambda (t1)
                                      (/ (local-time:timestamp-difference
