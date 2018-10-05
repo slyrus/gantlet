@@ -31,7 +31,7 @@
   (let ((resource-list (find-pane-named (pane-frame pane) 'resource-list)))
     (let ((resources (task-resources task)))
       (setf (climi::visible-items resource-list) (length resources))
-      (setf (climi::list-pane-items resource-list :invoke-callback nil) (mapcar #'name resources))))
+      (setf (clime:list-pane-items resource-list :invoke-callback nil) (mapcar #'name resources))))
   (window-refresh pane)
   (pane-needs-redisplay pane)
   (repaint-sheet pane +everywhere+))
@@ -303,16 +303,16 @@
            (no-dates (and (null (start task))
                           (null (end task)))))
       (let* ((task-start (cond ((start task))
-                               ((gantt::first-child-task-start task)
-                                (gantt::first-child-task-start task))
+                               ((gantt:first-child-task-start task)
+                                (gantt:first-child-task-start task))
                                (t start)))
              (progress (task-progress task))
              (task-end (cond ((end task)
                               (end task))
                              #+nil ((and progress (>= progress 1.0))
                               task-start)
-                             ((gantt::last-child-task-end task)
-                              (gantt::last-child-task-end task))
+                             ((gantt:last-child-task-end task)
+                              (gantt:last-child-task-end task))
                              (no-dates
                               task-start)
                              (t end)))
@@ -349,7 +349,7 @@
                      (incf y-offset (+ (- y2 y1) task-padding))
                      (incf task-counter))
                    (unless hide-task-children
-                     (loop for child across (gantt::children task)
+                     (loop for child across (gantt:task-children task)
                         do (let ((child-end (end child))
                                  (child-progress (task-progress child))
                                  (child-critical (gantt:task-critical child)))
@@ -459,7 +459,7 @@
 
     (incf (task-view-y-offset task-view) 65)
 
-    (loop for child across (gantt::children task)
+    (loop for child across (gantt:task-children task)
        for task-group-counter from 0
        do (let ((task-record
                  (with-output-to-output-record (pane)
@@ -713,7 +713,7 @@
   (with-open-file (file-stream file :direction :output
                                :if-exists :supersede
                                :element-type '(unsigned-byte 8))
-    (clim-pdf::with-output-to-pdf-stream
+    (clim-pdf:with-output-to-pdf-stream
         (stream file-stream
                 :header-comments '(:title (name task))
                 :scale-to-fit t
