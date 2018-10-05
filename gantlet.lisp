@@ -46,7 +46,7 @@
   (gantlet-display frame pane)
   (clim:redisplay-frame-pane frame pane))
 
-(defun redisplay (frame pane)
+(defun redisplay-app (frame pane)
   (clim:redisplay-frame-pane frame pane))
 
 ;; the zoom callbacks do not (yet) work as I would like. Problems:
@@ -654,7 +654,7 @@
 (define-gantlet-app-command (com-redisplay :name t) ()
   (let ((gantlet-pane (find-pane-named *application-frame* 'gantlet)))
     (when gantlet-pane
-      (redisplay *application-frame* gantlet-pane)
+      (redisplay-app *application-frame* gantlet-pane)
       (let ((view-bounds (true-viewport-region gantlet-pane)))
         (with-bounding-rectangle* (x1 y1 x2 y2)
             view-bounds
