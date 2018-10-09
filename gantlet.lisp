@@ -664,9 +664,43 @@
                            :ink +red+
                            :filled nil))))))
 
+(defun write-task-to-pdf-file (task file
+                               &key
+                                 (device-type '(1600 1000))
+                                 view)
+  (with-open-file (file-stream file :direction :output
+                               :if-exists :supersede
+                               :element-type '(unsigned-byte 8))
+    (clim-pdf:with-output-to-pdf-stream
+        (stream file-stream
+                :header-comments '(:title (name task))
+                :scale-to-fit t
+                :device-type device-type)
+      (setf (stream-default-view stream)
+            (or view (make-instance 'task-view
+                                    :task task
+                                    :start (start task)
+                                    :end (end task))))
+      (let ((*standard-output* stream))
+        (present task 'top-level-task)))))
+
+(define-gantlet-app-command (com-write-task-to-pdf :name t)
+    ((pdf-pathname pathname
+                   :default *default-pathname-defaults* :insert-default t))
+  (let* ((gantlet-pane (find-pane-named *application-frame* 'gantlet)))
+    (with-accessors ((task pane-task)
+                     (task-view stream-default-view))
+        gantlet-pane
+      (apply #'write-task-to-pdf-file task pdf-pathname
+             :device-type (list (bounding-rectangle-width gantlet-pane)
+                                (bounding-rectangle-height gantlet-pane))
+             (when task-view
+               `(:view ,task-view))))))
+
 (make-command-table 'file-command-table
 		    :errorp nil
-		    :menu '(("Quit" :command com-quit)))
+		    :menu '(("Write to PDF" :command com-write-task-to-pdf)
+                            ("Quit" :command com-quit)))
 
 (make-command-table 'gantt-command-table
 		    :errorp nil
@@ -709,19 +743,3 @@
                             :filled t
                             :ink clim:+background-ink+))))
 
-(defun write-task-to-pdf-file (task file &key (device-type '(1600 1000)))
-  (with-open-file (file-stream file :direction :output
-                               :if-exists :supersede
-                               :element-type '(unsigned-byte 8))
-    (clim-pdf:with-output-to-pdf-stream
-        (stream file-stream
-                :header-comments '(:title (name task))
-                :scale-to-fit t
-                :device-type device-type)
-      (setf (stream-default-view stream)
-            (make-instance 'task-view
-                           :task task
-                           :start (start task)
-                           :end (end task)))
-      (let ((*standard-output* stream))
-        (present task 'top-level-task)))))
