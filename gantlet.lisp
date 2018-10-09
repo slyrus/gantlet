@@ -432,6 +432,25 @@
               ;; by day?
               (t ))))))
 
+(defun draw-today-highlight (pane task-view)
+  (with-accessors ((start task-view-start)
+                   (end task-view-end))
+      task-view
+    (let*  ((pane-task-length (local-time:timestamp-difference end start))
+            (pane-width (rectangle-width (sheet-region pane)))
+            (pane-height (rectangle-height (sheet-region pane)))
+            (pane-unit (/ pane-task-length pane-width))
+            (x-zoom (zoom-x-level task-view))
+            (start-to-today (local-time:timestamp-difference (local-time:today) start))
+            (today-coord (/ start-to-today pane-unit)))
+      (draw-rectangle* pane
+                       (* x-zoom today-coord)
+                       0
+                       (+ (* x-zoom today-coord) 4)
+                       pane-height
+                       :ink +red+
+                       :filled nil))))
+
 (define-presentation-method present (task (type top-level-task) pane
                                           (task-view task-view) &key)
   (setf (task-view-task-counter task-view) 0)
@@ -483,7 +502,9 @@
                                                   :filled nil
                                                   :line-thickness 2))))))
               (add-output-record task-record background-record)
-              (stream-add-output-record pane background-record))))))
+              (stream-add-output-record pane background-record))))
+
+    (draw-today-highlight pane task-view)))
 
 (defun gantlet-display (frame pane)
   (declare (ignore frame))
