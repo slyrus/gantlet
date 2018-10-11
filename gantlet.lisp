@@ -191,7 +191,9 @@
                      (end-date end)
                      (notes task-notes)
                      (progress task-progress)
-                     (name name))
+                     (name name)
+                     (task-cost task-cost)
+                     (cost cost))
         task
       (let (text-list)
         (flet ((add-text (str)
@@ -205,6 +207,10 @@
               (add-text (format nil "Start: ~A" (date-string start-date))))
             (when end-date
               (add-text (format nil "End: ~A" (date-string end-date))))
+            (when task-cost
+              (add-text (format nil "Task Cost: ~A" (cl-l10n:format-number/currency nil task-cost 'ldml:usd))))
+            (when cost
+              (add-text (format nil "Total Cost: ~A" (cl-l10n:format-number/currency nil cost 'ldml:usd))))
             (when notes
               (loop for note in notes
                  do
@@ -367,7 +373,8 @@
 
 (defun draw-timeline (pane task-view)
   (with-accessors ((start task-view-start)
-                   (end task-view-end))
+                   (end task-view-end)
+                   (y task-view-y-offset))
       task-view
     (let* ((pane-task-length (local-time:timestamp-difference end start))
            (pane-width (rectangle-width (sheet-region pane)))
@@ -386,7 +393,7 @@
               ((> rough-months 24)
                (draw-rectangle* pane
                                 0 (task-view-y-offset task-view)
-                                100 (+ (task-view-y-offset task-view) 40)
+                                100 (+ y 40)
                                 :ink +red+ :filled t))
               (;; here we'll show things by month
                (> weeks 8)
@@ -419,14 +426,14 @@
                                                   (aref local-time:+short-month-names+ month)
                                                   year)
                                           (+ (* x-zoom (elt month-coords i)) 4)
-                                          55
+                                          (+ y 15)
                                           :align-y :top
                                           :text-style timeline-style)
                               (draw-rectangle* pane
                                                (* x-zoom (elt month-coords i))
-                                               (task-view-y-offset task-view)
+                                               y
                                                (* x-zoom (elt month-coords (1+ i)))
-                                               (+ (task-view-y-offset task-view) 30)
+                                               (+ y 30)
                                                :ink +red+
                                                :filled nil))))))))
               ;; by day?
@@ -456,6 +463,7 @@
   (setf (task-view-task-counter task-view) 0)
   (setf (task-view-x-offset task-view) 5)
   (setf (task-view-y-offset task-view) 26)
+
   (let* ((str (name task))
          (family :sans-serif)
          (face :bold)
@@ -471,40 +479,83 @@
                     (+ x1 (/ (- x2 x1) 2)) 10
                     :align-x :center
                     :align-y :top :text-style style))
-      (incf (task-view-y-offset task-view) height))
+      (incf (task-view-y-offset task-view) height)))
+  
+  (with-accessors ((cost cost))
+      task
+    (with-accessors ((task-view-y-offset task-view-y-offset))
+      task-view
+      (let* ((str (format nil "Remaining Cost: ~A" (cl-l10n:format-number/currency nil cost 'ldml:usd)))
+             (family :sans-serif)
+             (face :roman)
+             (size :normal)
+             (style (make-text-style family face size)))
+        (multiple-value-bind (width height)
+            (text-size pane str :text-style style)
+          (declare (ignore width))
+          (with-bounding-rectangle* (x1 y1 x2 y2)
+              pane
+            (declare (ignore y1 y2))
+            (draw-text* pane str
+                        (+ x1 (/ (- x2 x1) 2))
+                        task-view-y-offset
+                        :align-x :center
+                        :align-y :top :text-style style))
+          (incf (task-view-y-offset task-view) (+ 12 height))))))
 
-    ;; draw timeline
-    (draw-timeline pane task-view)
+  (with-accessors ((task-view-y-offset task-view-y-offset))
+      task-view
+    (let* ((str (format nil "Total Cost: ~A" (cl-l10n:format-number/currency nil (cost task :include-finished t) 'ldml:usd)))
+           (family :sans-serif)
+           (face :roman)
+           (size :normal)
+           (style (make-text-style family face size)))
+      (multiple-value-bind (width height)
+          (text-size pane str :text-style style)
+        (declare (ignore width))
+        (with-bounding-rectangle* (x1 y1 x2 y2)
+            pane
+          (declare (ignore y1 y2))
+          (draw-text* pane str
+                      (+ x1 (/ (- x2 x1) 2))
+                      task-view-y-offset
+                      :align-x :center
+                      :align-y :top :text-style style))
+        (incf (task-view-y-offset task-view) (+ 12 height)))))
 
-    (incf (task-view-y-offset task-view) 65)
+  ;; draw timeline
+    
+  (draw-timeline pane task-view)
 
-    (loop for child across (gantt:task-children task)
-       for task-group-counter from 0
-       do (let ((task-record
+  (incf (task-view-y-offset task-view) 65)
+
+  (loop for child across (gantt:task-children task)
+     for task-group-counter from 0
+     do (let ((task-record
+               (with-output-to-output-record (pane)
+                 (present child 'task))))
+          (let ((background-record
                  (with-output-to-output-record (pane)
-                   (present child 'task))))
-            (let ((background-record
-                   (with-output-to-output-record (pane)
-                     (let ((row-color (mod-elt *task-background-colors* task-group-counter))
-                           (task-padding 4))
-                       (with-bounding-rectangle* (x1 y1 x2 y2)
-                           task-record
-                         (with-bounding-rectangle* (px1 py1 px2 py2)
-                             pane
-                           (declare (ignore py1 py2))
-                           (draw-rectangle* pane px1 y1 px2 (+ y2 task-padding) :ink row-color))
-                         #+(or)
-                         (draw-rounded-rectangle* pane x1 y1 (+ x2 3) (+ y2 3)
-                                                  :ink (lighten-color row-color 0.4)
-                                                  :filled t)
-                         (draw-rounded-rectangle* pane x1 y1 (+ x2 3) (+ y2 3)
-                                                  :ink +gray50+
-                                                  :filled nil
-                                                  :line-thickness 2))))))
-              (add-output-record task-record background-record)
-              (stream-add-output-record pane background-record))))
+                   (let ((row-color (mod-elt *task-background-colors* task-group-counter))
+                         (task-padding 4))
+                     (with-bounding-rectangle* (x1 y1 x2 y2)
+                         task-record
+                       (with-bounding-rectangle* (px1 py1 px2 py2)
+                           pane
+                         (declare (ignore py1 py2))
+                         (draw-rectangle* pane px1 y1 px2 (+ y2 task-padding) :ink row-color))
+                       #+(or)
+                       (draw-rounded-rectangle* pane x1 y1 (+ x2 3) (+ y2 3)
+                                                :ink (lighten-color row-color 0.4)
+                                                :filled t)
+                       (draw-rounded-rectangle* pane x1 y1 (+ x2 3) (+ y2 3)
+                                                :ink +gray50+
+                                                :filled nil
+                                                :line-thickness 2))))))
+            (add-output-record task-record background-record)
+            (stream-add-output-record pane background-record))))
 
-    (draw-today-highlight pane task-view)))
+  (draw-today-highlight pane task-view))
 
 (defun gantlet-display (frame pane)
   (declare (ignore frame))
