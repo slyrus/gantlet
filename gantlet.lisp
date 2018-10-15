@@ -301,9 +301,9 @@
     (let* ((pane-task-length (local-time:timestamp-difference end start))
            (pane-width (rectangle-width (sheet-region pane)))
            (pane-unit (/ pane-task-length pane-width))
-           (task-height 10)
-           (task-padding 4)
-           (bottom-margin 6)
+           (task-height 6)
+           (task-padding 1)
+           (bottom-margin 1)
            (x-zoom (zoom-x-level task-view))
            (y-zoom (zoom-y-level task-view))
            (no-dates (and (null (start task))
@@ -555,6 +555,8 @@
             (add-output-record task-record background-record)
             (stream-add-output-record pane background-record))))
 
+  (draw-timeline pane task-view)
+
   (draw-today-highlight pane task-view))
 
 (defun gantlet-display (frame pane)
@@ -597,12 +599,12 @@
            :min-width 24 :max-width 24)
    (int :interactor
         :height 200
-        :max-height 200
+        :max-height 100
         :width 1200))
   (:layouts
    (default (vertically ()
               (horizontally ()
-                (5/6 (vertically ()
+                (8/9 (vertically ()
                         (horizontally ()
                           (scrolling ()
                             gantlet)
@@ -610,7 +612,7 @@
                             zoom-y))
                         (labelling (:label "Zoom X")
                           zoom-x)))
-                (1/6 (labelling (:label "Resources")
+                (1/9 (labelling (:label "Resources")
                        resource-list)))
               int))))
 
