@@ -179,7 +179,7 @@
                        border-color
                        (expanded t))
   (let* ((text-left-margin 6)
-         (text-top-margin 6)
+         (text-top-margin 2)
          (text-size :large)
          (family nil)
          (face :roman)
@@ -231,15 +231,15 @@
 	       pane
                (lambda (pane)
                  (draw-rectangle* pane x1 y1 x2 y2 :ink fill-color))
-               :shape :rounded
+               :shape :rectangle
                :filled t
                :ink border-color
                :outline-ink border-color
                :line-thickness 3
                :padding-left 2
-               :padding-right 1
-               :padding-top 2
-               :padding-bottom 1)
+               :padding-right 0
+               :padding-top 1
+               :padding-bottom 0)
               (with-output-as-presentation
                   (pane nil 'mute-presentation :record-type 'mute-presentation)
                 (when progress
