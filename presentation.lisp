@@ -417,7 +417,7 @@
            (pane-unit (/ pane-task-length pane-width)))
       (multiple-value-bind (dyear dmonth)
           (time-interval::timestamp-decoded-difference end start)
-        (let* ((nmonths (+ (* dyear 12) dmonth 1))
+        (let* ((nmonths (+ (* dyear 12) dmonth 2))
                (month-starts
                 (cons start
                       (loop for i from 1 below nmonths
@@ -542,42 +542,46 @@
                       :align-x :center
                       :align-y :top :text-style style))
         (incf (task-view-y-offset task-view) height)))
-    (let* ((str (format nil "Remaining Cost: ~A"
-                        (cl-l10n:format-number/currency nil (cost task) 'ldml:usd)))
-           (family :sans-serif)
-           (face :roman)
-           (size :normal)
-           (style (make-text-style family face size)))
-      (multiple-value-bind (width height)
-          (text-size pane str :text-style style)
-        (declare (ignore width))
-        (with-bounding-rectangle* (x1 y1 x2 y2)
-            pane
-          (declare (ignore y1 y2))
-          (draw-text* pane str
-                      (+ x1 (/ (- x2 x1) 2))
-                      task-view-y-offset
-                      :align-x :center
-                      :align-y :top :text-style style))
-        (incf (task-view-y-offset task-view) (+ 12 height))))
-    (let* ((str (format nil "Total Cost: ~A"
-                        (cl-l10n:format-number/currency nil (cost task :include-finished t) 'ldml:usd)))
-           (family :sans-serif)
-           (face :roman)
-           (size :normal)
-           (style (make-text-style family face size)))
-      (multiple-value-bind (width height)
-          (text-size pane str :text-style style)
-        (declare (ignore width))
-        (with-bounding-rectangle* (x1 y1 x2 y2)
-            pane
-          (declare (ignore y1 y2))
-          (draw-text* pane str
-                      (+ x1 (/ (- x2 x1) 2))
-                      task-view-y-offset
-                      :align-x :center
-                      :align-y :top :text-style style))
-        (incf (task-view-y-offset task-view) (+ 12 height))))
+    (let ((cost (cost task)))
+      (when cost
+        (let* ((str (format nil "Remaining Cost: ~A"
+                            (cl-l10n:format-number/currency nil cost 'ldml:usd)))
+               (family :sans-serif)
+               (face :roman)
+               (size :normal)
+               (style (make-text-style family face size)))
+          (multiple-value-bind (width height)
+              (text-size pane str :text-style style)
+            (declare (ignore width))
+            (with-bounding-rectangle* (x1 y1 x2 y2)
+                pane
+              (declare (ignore y1 y2))
+              (draw-text* pane str
+                          (+ x1 (/ (- x2 x1) 2))
+                          task-view-y-offset
+                          :align-x :center
+                          :align-y :top :text-style style))
+            (incf (task-view-y-offset task-view) (+ 12 height))))))
+    (let ((total-cost (cost task :include-finished t)))
+      (when total-cost
+        (let* ((str (format nil "Total Cost: ~A"
+                            (cl-l10n:format-number/currency nil total-cost 'ldml:usd)))
+               (family :sans-serif)
+               (face :roman)
+               (size :normal)
+               (style (make-text-style family face size)))
+          (multiple-value-bind (width height)
+              (text-size pane str :text-style style)
+            (declare (ignore width))
+            (with-bounding-rectangle* (x1 y1 x2 y2)
+                pane
+              (declare (ignore y1 y2))
+              (draw-text* pane str
+                          (+ x1 (/ (- x2 x1) 2))
+                          task-view-y-offset
+                          :align-x :center
+                          :align-y :top :text-style style))
+            (incf (task-view-y-offset task-view) (+ 12 height))))))
     ;; draw timeline on top
     (draw-timeline pane task-view)
     (incf (task-view-y-offset task-view) 65)
