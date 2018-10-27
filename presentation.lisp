@@ -503,15 +503,15 @@
             (pane-unit (/ pane-task-length pane-width))
             (x-zoom (zoom-x-level task-view))
             (start-to-today (local-time:timestamp-difference (local-time:today) start))
-            (today-coord (/ start-to-today pane-unit)))
+            (today-coord (* x-zoom (/ start-to-today pane-unit))))
       (declare (ignore pane-height))
       (with-bounding-rectangle* (x1 y1 x2 y2)
           (stream-current-output-record pane)
         (declare (ignore x1 x2))
         (draw-rectangle* pane
-                         (* x-zoom today-coord)
+                         today-coord
                          y1
-                         (+ (* x-zoom today-coord) 4)
+                         (+ today-coord 4)
                          y2
                          :ink +red+
                          :filled nil)))))
