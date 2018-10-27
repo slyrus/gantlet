@@ -143,7 +143,7 @@
                :ink border-color
                :outline-ink border-color
                :line-thickness 3
-               :padding-left 2
+               :padding-left 1
                :padding-right 0
                :padding-top 1
                :padding-bottom 0)
