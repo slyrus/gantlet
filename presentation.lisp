@@ -427,7 +427,7 @@
                                start
                              (local-time:adjust-timestamp
                                  (local-time:encode-timestamp 0 0 0 0 1 start-month start-year)
-                               (:offset :month (1+ i)))))))
+                               (:offset :month i))))))
                (month-coords
                 (mapcar (lambda (t1)
                           (/ (local-time:timestamp-difference
@@ -440,14 +440,17 @@
                (local-time:with-decoded-timestamp (:year year :month month)
                    (elt month-starts i)
                  (when (< i (1- nmonths))
-                   (draw-text* pane
-                               (format nil "~A ~A"
-                                       (aref local-time:+short-month-names+ month)
-                                       year)
-                               (+ (* x-zoom (elt month-coords i)) 4)
-                               (+ y 15)
-                               :align-y :top
-                               :text-style style)
+                   (when (> (- (elt month-coords (1+ i))
+                               (elt month-coords i))
+                            50)
+                     (draw-text* pane
+                                 (format nil "~A ~A"
+                                         (aref local-time:+short-month-names+ month)
+                                         year)
+                                 (+ (* x-zoom (elt month-coords i)) 4)
+                                 (+ y 15)
+                                 :align-y :top
+                                 :text-style style))
                    (draw-rectangle* pane
                                     (* x-zoom (elt month-coords i))
                                     y
@@ -501,62 +504,46 @@
             (x-zoom (zoom-x-level task-view))
             (start-to-today (local-time:timestamp-difference (local-time:today) start))
             (today-coord (/ start-to-today pane-unit)))
-      (draw-rectangle* pane
-                       (* x-zoom today-coord)
-                       0
-                       (+ (* x-zoom today-coord) 4)
-                       pane-height
-                       :ink +red+
-                       :filled nil))))
+      (declare (ignore pane-height))
+      (with-bounding-rectangle* (x1 y1 x2 y2)
+          (stream-current-output-record pane)
+        (declare (ignore x1 x2))
+        (draw-rectangle* pane
+                         (* x-zoom today-coord)
+                         y1
+                         (+ (* x-zoom today-coord) 4)
+                         y2
+                         :ink +red+
+                         :filled nil)))))
 
 (define-presentation-method present (task (type top-level-task) pane
                                           (task-view task-view) &key)
-  (setf (task-view-task-counter task-view) 0)
-  (setf (task-view-x-offset task-view) 5)
-  (setf (task-view-y-offset task-view) 26)
-
-  (let* ((str (name task))
-         (family :sans-serif)
-         (face :bold)
-         (size :huge)
-         (style (make-text-style family face size)))
-    (multiple-value-bind (width height)
-        (text-size pane str :text-style style)
-      (declare (ignore width))
-      (with-bounding-rectangle* (x1 y1 x2 y2)
-          pane
-        (declare (ignore y1 y2))
-        (draw-text* pane str
-                    (+ x1 (/ (- x2 x1) 2)) 10
-                    :align-x :center
-                    :align-y :top :text-style style))
-      (incf (task-view-y-offset task-view) height)))
-  
-  (with-accessors ((cost cost))
-      task
-    (with-accessors ((task-view-y-offset task-view-y-offset))
+  (with-accessors ((task-view-task-counter task-view-task-counter)
+                   (task-view-x-offset task-view-x-offset)
+                   (task-view-y-offset task-view-y-offset)
+                   (x-zoom zoom-x-level))
       task-view
-      (let* ((str (format nil "Remaining Cost: ~A" (cl-l10n:format-number/currency nil cost 'ldml:usd)))
-             (family :sans-serif)
-             (face :roman)
-             (size :normal)
-             (style (make-text-style family face size)))
-        (multiple-value-bind (width height)
-            (text-size pane str :text-style style)
-          (declare (ignore width))
-          (with-bounding-rectangle* (x1 y1 x2 y2)
-              pane
-            (declare (ignore y1 y2))
-            (draw-text* pane str
-                        (+ x1 (/ (- x2 x1) 2))
-                        task-view-y-offset
-                        :align-x :center
-                        :align-y :top :text-style style))
-          (incf (task-view-y-offset task-view) (+ 12 height))))))
-
-  (with-accessors ((task-view-y-offset task-view-y-offset))
-      task-view
-    (let* ((str (format nil "Total Cost: ~A" (cl-l10n:format-number/currency nil (cost task :include-finished t) 'ldml:usd)))
+    (setf task-view-task-counter 0
+          task-view-x-offset 5
+          task-view-y-offset 26)
+    (let* ((str (name task))
+           (family :sans-serif)
+           (face :bold)
+           (size :huge)
+           (style (make-text-style family face size)))
+      (multiple-value-bind (width height)
+          (text-size pane str :text-style style)
+        (declare (ignore width))
+        (with-bounding-rectangle* (x1 y1 x2 y2)
+            pane
+          (declare (ignore y1 y2))
+          (draw-text* pane str
+                      (+ x1 (/ (- x2 x1) 2)) 10
+                      :align-x :center
+                      :align-y :top :text-style style))
+        (incf (task-view-y-offset task-view) height)))
+    (let* ((str (format nil "Remaining Cost: ~A"
+                        (cl-l10n:format-number/currency nil (cost task) 'ldml:usd)))
            (family :sans-serif)
            (face :roman)
            (size :normal)
@@ -572,40 +559,57 @@
                       task-view-y-offset
                       :align-x :center
                       :align-y :top :text-style style))
-        (incf (task-view-y-offset task-view) (+ 12 height)))))
-
-  ;; draw timeline
-    
-  (draw-timeline pane task-view)
-
-  (incf (task-view-y-offset task-view) 65)
-
-  (loop for child across (gantt:task-children task)
-     for task-group-counter from 0
-     do (let ((task-record
-               (with-output-to-output-record (pane)
-                 (present child 'task))))
-          (let ((background-record
-                 (with-output-to-output-record (pane)
-                   (let ((row-color (mod-elt *task-background-colors* task-group-counter))
-                         (task-padding 4))
-                     (with-bounding-rectangle* (x1 y1 x2 y2)
-                         task-record
-                       (with-bounding-rectangle* (px1 py1 px2 py2)
-                           pane
-                         (declare (ignore py1 py2))
-                         (draw-rectangle* pane px1 y1 px2 (+ y2 task-padding) :ink row-color))
-                       #+(or)
-                       (draw-rounded-rectangle* pane x1 y1 (+ x2 3) (+ y2 3)
-                                                :ink (lighten-color row-color 0.4)
-                                                :filled t)
-                       (draw-rounded-rectangle* pane x1 y1 (+ x2 3) (+ y2 3)
-                                                :ink +gray50+
-                                                :filled nil
-                                                :line-thickness 2))))))
-            (add-output-record task-record background-record)
-            (stream-add-output-record pane background-record))))
-
-  (draw-timeline pane task-view)
-
-  (draw-today-highlight pane task-view))
+        (incf (task-view-y-offset task-view) (+ 12 height))))
+    (let* ((str (format nil "Total Cost: ~A"
+                        (cl-l10n:format-number/currency nil (cost task :include-finished t) 'ldml:usd)))
+           (family :sans-serif)
+           (face :roman)
+           (size :normal)
+           (style (make-text-style family face size)))
+      (multiple-value-bind (width height)
+          (text-size pane str :text-style style)
+        (declare (ignore width))
+        (with-bounding-rectangle* (x1 y1 x2 y2)
+            pane
+          (declare (ignore y1 y2))
+          (draw-text* pane str
+                      (+ x1 (/ (- x2 x1) 2))
+                      task-view-y-offset
+                      :align-x :center
+                      :align-y :top :text-style style))
+        (incf (task-view-y-offset task-view) (+ 12 height))))
+    ;; draw timeline on top
+    (draw-timeline pane task-view)
+    (incf (task-view-y-offset task-view) 65)
+    (with-accessors ((start task-view-start)
+                     (end task-view-end))
+        task-view
+      (let*  ((pane-width (rectangle-width (sheet-region pane)))
+              (end-coord (* pane-width x-zoom)))
+        (loop for child across (gantt:task-children task)
+           for task-group-counter from 0
+           do
+             (let ((task-record
+                    (with-output-to-output-record (pane)
+                      (present child 'task))))
+               (incf (task-view-y-offset task-view) 8)
+               (let ((background-record
+                      (with-output-to-output-record (pane)
+                        (let ((row-color (mod-elt *task-background-colors* task-group-counter))
+                              (task-padding 4))
+                          (with-bounding-rectangle* (x1 y1 x2 y2)
+                              task-record
+                            (draw-rectangle* pane
+                                             0 y1
+                                             (max (+ end-coord 18) (+ x2 3)) (+ y2 task-padding)
+                                             :ink row-color)
+                            (draw-rounded-rectangle* pane x1 (- y1 3) (+ x2 3) (+ y2 3)
+                                                     :ink +gray50+
+                                                     :filled nil
+                                                     :line-thickness 2))))))
+                 (add-output-record task-record background-record)
+                 (stream-add-output-record pane background-record))))))
+    ;; draw timeline on bottom
+    (draw-timeline pane task-view)
+    ;; draw a red rectangle around the current date
+    (draw-today-highlight pane task-view)))

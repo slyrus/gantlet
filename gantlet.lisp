@@ -239,11 +239,12 @@
     (with-accessors ((task pane-task)
                      (task-view stream-default-view))
         gantlet-pane
-      (apply #'write-task-to-pdf-file task pdf-pathname
-             :device-type (list (bounding-rectangle-width gantlet-pane)
-                                (bounding-rectangle-height gantlet-pane))
-             (when task-view
-               `(:view ,task-view))))))
+      (with-bounding-rectangle* (x1 y1 x2 y2)
+          (sheet-region gantlet-pane)
+        (apply 'write-task-to-pdf-file task pdf-pathname
+               :device-type (list (- x2 x1) (+ (- y2 y1) 220))
+               (when task-view
+                 `(:view ,task-view)))))))
 
 (make-command-table 'file-command-table
 		    :errorp nil
