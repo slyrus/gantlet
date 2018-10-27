@@ -13,28 +13,18 @@
       (let ((view (stream-default-view pane)))
         (when view
           (setf (zoom-x-level view) scale)))
-      (setf (pane-needs-redisplay pane) t)
-
       ;; 1. find current viewport center
-
       (when (pane-viewport pane)
         (with-bounding-rectangle* (old-x1 old-y1 old-x2 old-y2)
             (pane-viewport-region pane)
           (declare (ignore old-x2 old-y1 old-y2))
-
-          (redraw *application-frame* pane)
-          (setf (pane-needs-redisplay pane) t)
-
           (with-bounding-rectangle* (new-x1 new-y1 new-x2 new-y2)
               (pane-viewport-region pane)
             (declare (ignore new-y2))
             (let ((new-x-pos (+ old-x1 (/ (- new-x2 new-x1) 2))))
-
               ;; 2. set the viewport center to the previous viewport center
               (scroll-extent pane new-x-pos new-y1)))))
-
-      (redraw *application-frame* pane)
-      #+nil (setf (pane-needs-redisplay pane) t))))
+      (redraw *application-frame* pane))))
 
 (defun zoom-y-callback (gadget scale)
   (let ((frame (pane-frame gadget)))
@@ -42,15 +32,16 @@
       (let ((view (stream-default-view pane)))
         (when view
           (setf (zoom-y-level view) scale)))
-      (setf (pane-needs-redisplay pane) t)
+      #+nil (setf (pane-needs-redisplay pane) t)
       (redraw *application-frame* pane)
-      (repaint-sheet pane +everywhere+))))
+      #+nil (repaint-sheet pane +everywhere+))))
 
 (defun gantlet-display (frame pane)
   (declare (ignore frame))
   (let* ((task (pane-task pane)))
     (when task
-      (present task 'top-level-task))))
+      (present task 'top-level-task)
+      (clim:replay (clim:stream-output-history pane) pane))))
 
 (define-application-frame gantlet-app ()
   ()
@@ -280,12 +271,12 @@
              (lambda ()
                (run-frame-top-level frame))))))
 
+#+nil
 (defmethod clim:redisplay-frame-panes :after
     ((frame gantlet-app) &key force-p)
   (declare (ignore force-p))
   (let ((pane (clim:find-pane-named clim:*application-frame* 'gantlet)))
     (clim:replay (clim:stream-output-history pane) pane)
-    #+nil
     (clim:with-output-recording-options (pane :record nil :draw t)
       (let ((view-bounds (true-viewport-region pane)))
         (with-bounding-rectangle* (x1 y1 x2 y2)
