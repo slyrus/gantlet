@@ -278,6 +278,30 @@
                                (present child 'task))))))))
             presentation))))))
 
+(defun draw-text-lines (pane x y lines &key (style *default-text-style*)
+                                            (text-top-margin 2)
+                                            (ink +black+)
+                                            (align-y :top))
+  (let ((text-list)
+        (y-offset y))
+    (flet ((add-text (str)
+             (multiple-value-bind (width height final-x final-y baseline)
+	         (text-size pane str :text-style style)
+               (declare (ignore final-x final-y baseline))
+               (push (list str width (+ text-top-margin height)) text-list)))
+           (draw-text-line (text-spec)
+             (destructuring-bind (text width height)
+                 text-spec
+               (declare (ignore width))
+               (draw-text* pane text
+                           x y-offset
+                           :align-y align-y
+                           :ink ink
+                           :text-style style)
+               (incf y-offset height))))
+      (mapcar #'add-text lines)
+      (mapcar #'draw-text-line (reverse text-list)))))
+
 (defun draw-timeline (pane task-view)
   (with-accessors ((start task-view-start)
                    (end task-view-end)
@@ -291,19 +315,107 @@
            (face :bold)
            (size :large)
            (timeline-style (make-text-style family face size)))
-      (let* ((days (/ pane-task-length local-time:+seconds-per-day+))
-             (weeks (/ days local-time:+days-per-week+))
-             (rough-months (/ days 30))
-             (rough-years (/ days 365)))
-        (cond (;; here we should show things by year and maybe quarter
-               (> rough-years 3))
-              ((> rough-months 24)
-               (draw-rectangle* pane
-                                0 (task-view-y-offset task-view)
-                                100 (+ y 40)
-                                :ink +red+ :filled t))
+      (let* ((zoom-task-days (/ (/ pane-task-length local-time:+seconds-per-day+) x-zoom))
+             (zoom-task-weeks (/ zoom-task-days local-time:+days-per-week+))
+             (zoom-task-rough-months (/ zoom-task-days 30))
+             (zoom-task-rough-years (/ zoom-task-days 365))
+             (zoom-unit (/ pane-unit x-zoom local-time:+seconds-per-day+)))
+        (cond (;; here we should show things by year
+               (> zoom-unit 0.50)
+               (multiple-value-bind (dyear)
+                   (time-interval::timestamp-decoded-difference end start)
+                 (let ((nyears (+ dyear 2)))
+                   (let* ((year-starts
+                           (loop for i to nyears
+                              collect
+                                (local-time:with-decoded-timestamp
+                                    (:year start-year)
+                                    start
+                                  (local-time:adjust-timestamp
+                                      (local-time:encode-timestamp 0 0 0 0 1 1 start-year)
+                                    (:offset :year i)))))
+                          (year-coords
+                           (mapcar (lambda (t1)
+                                     (/ (local-time:timestamp-difference
+                                         t1
+                                         (elt year-starts 0))
+                                        pane-unit))
+                                   year-starts)))
+                     (loop for i to nyears
+                        do
+                          (local-time:with-decoded-timestamp (:year year)
+                              (elt year-starts i)
+                            (when (< i nyears)
+                              (draw-text* pane
+                                          (format nil "~A" year)
+                                          (+ (* x-zoom (elt year-coords i)) 4)
+                                          (+ y 15)
+                                          :align-y :top
+                                          :text-style timeline-style)
+                              (draw-rectangle* pane
+                                               (* x-zoom (elt year-coords i))
+                                               y
+                                               (* x-zoom (elt year-coords (1+ i)))
+                                               (+ y 30)
+                                               :ink +red+
+                                               :filled nil))))))))
+              (;; here we should show things by quarter
+               (> zoom-unit 0.25)
+               (multiple-value-bind (dyear dmonth)
+                   (time-interval::timestamp-decoded-difference end start)
+                 (let ((dquarter (ceiling dmonth 3)))
+                   (let ((nquarters (+ (* dyear 4) dquarter 3)))
+                     
+                     (draw-text-lines pane 0 30
+                                      (list (format nil "Quarters!")
+                                            (format nil "~A ~A" start end))
+                                      :style timeline-style)
+                     (let* ((quarter-starts
+                             (cons
+                              start
+                              (loop for i from 1 below nquarters
+                                 collect
+                                   (local-time:with-decoded-timestamp
+                                       (:year start-year :month start-month)
+                                       start
+                                     (local-time:adjust-timestamp
+                                         (local-time:encode-timestamp 0 0 0 0 1
+                                                                      (1+ (* (floor (1- start-month) 3) 3))
+                                                                      start-year)
+                                       (:offset :month (* i 3)))))))
+                            (quarter-coords
+                             (mapcar (lambda (t1)
+                                       (/ (local-time:timestamp-difference
+                                           t1
+                                           (elt quarter-starts 0))
+                                          pane-unit))
+                                     quarter-starts)))
+                       (loop for i below nquarters
+                          do
+                            (local-time:with-decoded-timestamp (:year year :month month)
+                                (elt quarter-starts i)
+                              (when (< i (1- nquarters))
+                                (when (> (- (elt quarter-coords (1+ i))
+                                            (elt quarter-coords i))
+                                         50)
+                                  (draw-text* pane
+                                              (format nil "Q~A ~A"
+                                                      (1+ (floor (1- month) 3))
+                                                      year)
+                                              (+ (* x-zoom (elt quarter-coords i)) 4)
+                                              (+ y 15)
+                                              :align-y :top
+                                              :text-style timeline-style))
+                                (draw-rectangle* pane
+                                                 (* x-zoom (elt quarter-coords i))
+                                                 y
+                                                 (* x-zoom (elt quarter-coords (1+ i)))
+                                                 (+ y 30)
+                                                 :ink +red+
+                                                 :filled nil)))))))))
               (;; here we'll show things by month
-               (> weeks 8)
+               ;; (> zoom-unit 0.05)
+               t
                (multiple-value-bind (dyear dmonth)
                    (time-interval::timestamp-decoded-difference end start)
                  (let ((nmonths (+ (* dyear 12) dmonth 1)))
@@ -343,8 +455,13 @@
                                                (+ y 30)
                                                :ink +red+
                                                :filled nil))))))))
-              ;; by day?
-              (t ))))))
+              ;; by week or day?
+              #+(or)
+              (t
+               (draw-rectangle* pane
+                                0 (task-view-y-offset task-view)
+                                100 (+ y 40)
+                                :ink +green+ :filled t)))))))
 
 (defun draw-today-highlight (pane task-view)
   (with-accessors ((start task-view-start)
