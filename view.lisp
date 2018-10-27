@@ -7,7 +7,7 @@
    (zoom-y-level :initform 1.0d0 :accessor zoom-y-level)
    (start :initarg :start :accessor task-view-start)
    (end :initarg :end :accessor task-view-end)
-   (hide-completed-tasks :initform t :initarg :hide-completed-tasks :accessor task-view-hide-completed-tasks)
+   (hide-completed-tasks :initform nil :initarg :hide-completed-tasks :accessor task-view-hide-completed-tasks)
    (hide-non-critical-tasks :initform nil :initarg :hide-non-critical-tasks :accessor task-view-hide-non-critical-tasks)
    (x-offset :initarg :x-offset :accessor task-view-x-offset :initform 5)
    (y-offset :initarg :y-offset :accessor task-view-y-offset :initform 0)
