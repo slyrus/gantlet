@@ -493,7 +493,7 @@
                                 100 (+ y 40)
                                 :ink +green+ :filled t)))))))
 
-(defun draw-today-highlight (pane task-view)
+(defun draw-today-highlight (pane task-view &key top bottom)
   (with-accessors ((start task-view-start)
                    (end task-view-end))
       task-view
@@ -503,16 +503,22 @@
             (pane-unit (/ pane-task-length pane-width))
             (x-zoom (zoom-x-level task-view))
             (start-to-today (local-time:timestamp-difference (local-time:today) start))
-            (today-coord (* x-zoom (/ start-to-today pane-unit))))
+            (today-coord (* x-zoom (/ start-to-today pane-unit)))
+            (start-to-tomorrow (local-time:timestamp-difference
+                                (local-time:adjust-timestamp
+                                    (local-time:today)
+                                  (:offset :day 1))
+                                start))
+            (tomorrow-coord (* x-zoom (/ start-to-tomorrow pane-unit))))
       (declare (ignore pane-height))
       (with-bounding-rectangle* (x1 y1 x2 y2)
           (stream-current-output-record pane)
         (declare (ignore x1 x2))
         (draw-rectangle* pane
                          today-coord
-                         y1
-                         (+ today-coord 4)
-                         y2
+                         (or top y1)
+                         (max (+ today-coord 4) tomorrow-coord)
+                         (or bottom y2)
                          :ink +red+
                          :filled nil)))))
 
@@ -541,7 +547,7 @@
                       (+ x1 (/ (- x2 x1) 2)) 10
                       :align-x :center
                       :align-y :top :text-style style))
-        (incf (task-view-y-offset task-view) height)))
+        (incf task-view-y-offset height)))
     (let ((cost (cost task)))
       (when cost
         (let* ((str (format nil "Remaining Cost: ~A"
@@ -561,7 +567,7 @@
                           task-view-y-offset
                           :align-x :center
                           :align-y :top :text-style style))
-            (incf (task-view-y-offset task-view) (+ 12 height))))))
+            (incf task-view-y-offset (+ 12 height))))))
     (let ((total-cost (cost task :include-finished t)))
       (when total-cost
         (let* ((str (format nil "Total Cost: ~A"
@@ -581,39 +587,41 @@
                           task-view-y-offset
                           :align-x :center
                           :align-y :top :text-style style))
-            (incf (task-view-y-offset task-view) (+ 12 height))))))
+            (incf task-view-y-offset (+ 12 height))))))
     ;; draw timeline on top
     (draw-timeline pane task-view)
-    (incf (task-view-y-offset task-view) 65)
-    (with-accessors ((start task-view-start)
-                     (end task-view-end))
-        task-view
-      (let*  ((pane-width (rectangle-width (sheet-region pane)))
-              (end-coord (* pane-width x-zoom)))
-        (loop for child across (gantt:task-children task)
-           for task-group-counter from 0
-           do
-             (let ((task-record
-                    (with-output-to-output-record (pane)
-                      (present child 'task))))
-               (incf (task-view-y-offset task-view) 8)
-               (let ((background-record
+    (incf task-view-y-offset 65)
+    (let ((today-top task-view-y-offset))
+      (with-accessors ((start task-view-start)
+                       (end task-view-end))
+          task-view
+        (let*  ((pane-width (rectangle-width (sheet-region pane)))
+                (end-coord (* pane-width x-zoom)))
+          (loop for child across (gantt:task-children task)
+             for task-group-counter from 0
+             do
+               (let ((task-record
                       (with-output-to-output-record (pane)
-                        (let ((row-color (mod-elt *task-background-colors* task-group-counter))
-                              (task-padding 4))
-                          (with-bounding-rectangle* (x1 y1 x2 y2)
-                              task-record
-                            (draw-rectangle* pane
-                                             0 y1
-                                             (max (+ end-coord 18) (+ x2 3)) (+ y2 task-padding)
-                                             :ink row-color)
-                            (draw-rounded-rectangle* pane x1 (- y1 3) (+ x2 3) (+ y2 3)
-                                                     :ink +gray50+
-                                                     :filled nil
-                                                     :line-thickness 2))))))
-                 (add-output-record task-record background-record)
-                 (stream-add-output-record pane background-record))))))
+                        (present child 'task))))
+                 (incf task-view-y-offset 8)
+                 (let ((background-record
+                        (with-output-to-output-record (pane)
+                          (let ((row-color (mod-elt *task-background-colors* task-group-counter))
+                                (task-padding 4))
+                            (with-bounding-rectangle* (x1 y1 x2 y2)
+                                task-record
+                              (draw-rectangle* pane
+                                               0 y1
+                                               (max (+ end-coord 18) (+ x2 3)) (+ y2 task-padding)
+                                               :ink row-color)
+                              (draw-rounded-rectangle* pane x1 (- y1 3) (+ x2 3) (+ y2 3)
+                                                       :ink +gray50+
+                                                       :filled nil
+                                                       :line-thickness 2))))))
+                   (add-output-record task-record background-record)
+                   (stream-add-output-record pane background-record))))))
+      ;; draw a red rectangle around the current date
+      (draw-today-highlight pane task-view :top (- today-top 4) :bottom (- task-view-y-offset 8)))
     ;; draw timeline on bottom
-    (draw-timeline pane task-view)
-    ;; draw a red rectangle around the current date
-    (draw-today-highlight pane task-view)))
+    (incf task-view-y-offset 4)
+    (draw-timeline pane task-view)))
