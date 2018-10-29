@@ -6,35 +6,119 @@
 ;; 1. When you zoom in the scroll bars are reset to 0, 0
 ;;
 ;; 2. There's a lot of flickering.
-(defun zoom-x-callback (gadget scale)
+(defun zoom-x-drag (gadget scale)
+  (declare (optimize (debug 3)))
+  #+nil
+  (let ((frame (pane-frame gadget)))
+    (let ((pane (find-pane-named frame 'gantlet)))
+      (when pane
+        (let ((view (stream-default-view pane)))
+          (when view
+            (let ((old-x-scale (zoom-x-level view)))
+              (climi::letf (((zoom-x-level view) scale))
+                ;; 1. find current viewport center
+                (let (new-x-pos
+                      new-y-pos)
+                  (when (pane-viewport pane)
+                    (with-bounding-rectangle* (new-x1 new-y1 new-x2 new-y2)
+                        (pane-viewport-region pane)
+                      (let ((old-x-center (/ (+ new-x1 (/ (- new-x2 new-x1) 2)) old-x-scale)))
+                        (setf new-x-pos (- (* old-x-center scale) (/ (- new-x2 new-x1) 2))
+                              new-y-pos new-y1)
+                        (redraw *application-frame* pane))))
+                  ;; 2. set the viewport center to the previous viewport center
+                  (when (and new-x-pos new-y-pos)
+                    (scroll-extent pane new-x-pos new-y-pos)))))))))))
+
+(defun zoom-x-value-changed (gadget scale)
   (declare (optimize (debug 3)))
   (let ((frame (pane-frame gadget)))
     (let ((pane (find-pane-named frame 'gantlet)))
-      (let ((view (stream-default-view pane)))
-        (when view
-          (setf (zoom-x-level view) scale)))
-      ;; 1. find current viewport center
-      (when (pane-viewport pane)
-        (with-bounding-rectangle* (old-x1 old-y1 old-x2 old-y2)
-            (pane-viewport-region pane)
-          (declare (ignore old-x2 old-y1 old-y2))
-          (with-bounding-rectangle* (new-x1 new-y1 new-x2 new-y2)
-              (pane-viewport-region pane)
-            (declare (ignore new-y2))
-            (let ((new-x-pos (+ old-x1 (/ (- new-x2 new-x1) 2))))
-              ;; 2. set the viewport center to the previous viewport center
-              (scroll-extent pane new-x-pos new-y1)))))
-      (redraw *application-frame* pane))))
+      (when pane
+        (let ((view (stream-default-view pane)))
+          (when view
+            (let ((old-x-scale (zoom-x-level view)))
+              (setf (zoom-x-level view) scale)
+            ;; 1. find current viewport center
+              (let (new-x-pos
+                    new-y-pos)
+                (when (pane-viewport pane)
+                  (with-bounding-rectangle* (new-x1 new-y1 new-x2 new-y2)
+                      (pane-viewport-region pane)
+                    (let ((old-x-center (/ (+ new-x1 (/ (- new-x2 new-x1) 2)) old-x-scale)))
+                      (setf new-x-pos (- (* old-x-center scale) (/ (- new-x2 new-x1) 2))
+                            new-y-pos new-y1)
+                      (redraw *application-frame* pane)
+                      #+nil
+                      (progn
+                        (draw-circle* pane
+                                           (* old-x-center scale)
+                                           (+ new-y1 (/ (- new-y2 new-y1) 2))
+                                           20 :filled t :ink +orange+)
+                        (draw-circle* pane
+                                      (+ new-x1 (/ (- new-x2 new-x1) 2))
+                                      (+ new-y1 (/ (- new-y2 new-y1) 2))
+                                      20 :filled t :ink +pink+)))))
+                ;; 2. set the viewport center to the previous viewport center
+                (when (and new-x-pos new-y-pos)
+                  (scroll-extent pane new-x-pos new-y-pos))))))))))
 
-(defun zoom-y-callback (gadget scale)
+(defun zoom-y-drag (gadget scale)
+  (declare (optimize (debug 3)))
+  #+nil
   (let ((frame (pane-frame gadget)))
     (let ((pane (find-pane-named frame 'gantlet)))
-      (let ((view (stream-default-view pane)))
-        (when view
-          (setf (zoom-y-level view) scale)))
-      #+nil (setf (pane-needs-redisplay pane) t)
-      (redraw *application-frame* pane)
-      #+nil (repaint-sheet pane +everywhere+))))
+      (when pane
+        (let ((view (stream-default-view pane)))
+          (when view
+            (let ((old-y-scale (zoom-y-level view)))
+              (climi::letf (((zoom-y-level view) scale))
+                ;; 1. find current viewport center
+                (let (new-x-pos
+                      new-y-pos)
+                  (when (pane-viewport pane)
+                    (with-bounding-rectangle* (new-x1 new-y1 new-x2 new-y2)
+                        (pane-viewport-region pane)
+                      (let ((old-y-center (/ (+ new-y1 (/ (- new-y2 new-y1) 2)) old-y-scale)))
+                        (setf new-x-pos new-x1
+                              new-y-pos (- (* old-y-center scale) (/ (- new-y2 new-y1) 2)))
+                        (redraw *application-frame* pane))))
+                  ;; 2. set the viewport center to the previous viewport center
+                  (when (and new-x-pos new-y-pos)
+                    (scroll-extent pane new-x-pos new-y-pos)))))))))))
+
+(defun zoom-y-value-changed (gadget scale)
+  (declare (optimize (debug 3)))
+  (let ((frame (pane-frame gadget)))
+    (let ((pane (find-pane-named frame 'gantlet)))
+      (when pane
+        (let ((view (stream-default-view pane)))
+          (when view
+            (let ((old-y-scale (zoom-y-level view)))
+              (setf (zoom-y-level view) scale)
+            ;; 1. find current viewport center
+              (let (new-x-pos
+                    new-y-pos)
+                (when (pane-viewport pane)
+                  (with-bounding-rectangle* (new-x1 new-y1 new-x2 new-y2)
+                      (pane-viewport-region pane)
+                    (let ((old-y-center (/ (+ new-y1 (/ (- new-y2 new-y1) 2)) old-y-scale)))
+                      (setf new-x-pos new-x1
+                            new-y-pos (- (* old-y-center scale) (/ (- new-y2 new-y1) 2)))
+                      (redraw *application-frame* pane)
+                      #+nil
+                      (progn
+                        (draw-circle* pane
+                                      (+ new-x1 (/ (- new-x2 new-x1) 2))
+                                      (* old-y-center scale)
+                                      20 :filled t :ink +orange+)
+                        (draw-circle* pane
+                                      (+ new-x1 (/ (- new-x2 new-x1) 2))
+                                      (+ new-y1 (/ (- new-y2 new-y1) 2))
+                                      20 :filled t :ink +pink+)))))
+                ;; 2. set the viewport center to the previous viewport center
+                (when (and new-x-pos new-y-pos)
+                  (scroll-extent pane new-x-pos new-y-pos))))))))))
 
 (defun gantlet-display (frame pane)
   (declare (ignore frame))
@@ -62,8 +146,8 @@
            :value 1.0d0
            :show-value-p t
            :orientation :horizontal
-           :drag-callback 'zoom-x-callback
-           :value-changed-callback 'zoom-x-callback
+           :drag-callback 'zoom-x-drag
+           :value-changed-callback 'zoom-x-value-changed
            :min-height 24 :max-height 24)
    (zoom-y :slider
            :min-value 0.1
@@ -72,8 +156,8 @@
            :value 1.0d0
            :show-value-p t
            :orientation :vertical
-           :drag-callback 'zoom-y-callback
-           :value-changed-callback 'zoom-y-callback
+           :drag-callback 'zoom-y-drag
+           :value-changed-callback 'zoom-y-value-changed
            :min-width 24 :max-width 24)
    (int :interactor
         :height 200
@@ -242,7 +326,7 @@
       (with-bounding-rectangle* (x1 y1 x2 y2)
           (sheet-region gantlet-pane)
         (apply 'write-task-to-pdf-file task pdf-pathname
-               :device-type (list (- x2 x1) (+ (- y2 y1) 220))
+               :device-type (list (- x2 x1) (+ (- y2 y1) 500))
                (when task-view
                  `(:view ,task-view)))))))
 
