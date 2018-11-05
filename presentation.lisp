@@ -527,6 +527,7 @@
   (with-accessors ((task-view-task-counter task-view-task-counter)
                    (task-view-x-offset task-view-x-offset)
                    (task-view-y-offset task-view-y-offset)
+                   (task-view-hide-cost task-view-hide-cost)
                    (x-zoom zoom-x-level))
       task-view
     (setf task-view-task-counter 0
@@ -548,46 +549,47 @@
                       :align-x :center
                       :align-y :top :text-style style))
         (incf task-view-y-offset height)))
-    (let ((cost (cost task)))
-      (when cost
-        (let* ((str (format nil "Remaining Cost: ~A"
-                            (cl-l10n:format-number/currency nil cost 'ldml:usd)))
-               (family :sans-serif)
-               (face :roman)
-               (size :normal)
-               (style (make-text-style family face size)))
-          (multiple-value-bind (width height)
-              (text-size pane str :text-style style)
-            (declare (ignore width))
-            (with-bounding-rectangle* (x1 y1 x2 y2)
-                pane
-              (declare (ignore y1 y2))
-              (draw-text* pane str
-                          (+ x1 (/ (- x2 x1) 2))
-                          task-view-y-offset
-                          :align-x :center
-                          :align-y :top :text-style style))
-            (incf task-view-y-offset (+ 12 height))))))
-    (let ((total-cost (cost task :include-finished t)))
-      (when total-cost
-        (let* ((str (format nil "Total Cost: ~A"
-                            (cl-l10n:format-number/currency nil total-cost 'ldml:usd)))
-               (family :sans-serif)
-               (face :roman)
-               (size :normal)
-               (style (make-text-style family face size)))
-          (multiple-value-bind (width height)
-              (text-size pane str :text-style style)
-            (declare (ignore width))
-            (with-bounding-rectangle* (x1 y1 x2 y2)
-                pane
-              (declare (ignore y1 y2))
-              (draw-text* pane str
-                          (+ x1 (/ (- x2 x1) 2))
-                          task-view-y-offset
-                          :align-x :center
-                          :align-y :top :text-style style))
-            (incf task-view-y-offset (+ 12 height))))))
+    (when (not task-view-hide-cost)
+      (let ((cost (cost task)))
+        (when cost
+          (let* ((str (format nil "Remaining Cost: ~A"
+                              (cl-l10n:format-number/currency nil cost 'ldml:usd)))
+                 (family :sans-serif)
+                 (face :roman)
+                 (size :normal)
+                 (style (make-text-style family face size)))
+            (multiple-value-bind (width height)
+                (text-size pane str :text-style style)
+              (declare (ignore width))
+              (with-bounding-rectangle* (x1 y1 x2 y2)
+                  pane
+                (declare (ignore y1 y2))
+                (draw-text* pane str
+                            (+ x1 (/ (- x2 x1) 2))
+                            task-view-y-offset
+                            :align-x :center
+                            :align-y :top :text-style style))
+              (incf task-view-y-offset (+ 12 height))))))
+      (let ((total-cost (cost task :include-finished t)))
+        (when (and (not task-view-hide-cost) total-cost)
+          (let* ((str (format nil "Total Cost: ~A"
+                              (cl-l10n:format-number/currency nil total-cost 'ldml:usd)))
+                 (family :sans-serif)
+                 (face :roman)
+                 (size :normal)
+                 (style (make-text-style family face size)))
+            (multiple-value-bind (width height)
+                (text-size pane str :text-style style)
+              (declare (ignore width))
+              (with-bounding-rectangle* (x1 y1 x2 y2)
+                  pane
+                (declare (ignore y1 y2))
+                (draw-text* pane str
+                            (+ x1 (/ (- x2 x1) 2))
+                            task-view-y-offset
+                            :align-x :center
+                            :align-y :top :text-style style))
+              (incf task-view-y-offset (+ 12 height)))))))
     ;; draw timeline on top
     (draw-timeline pane task-view)
     (incf task-view-y-offset 65)
