@@ -207,8 +207,9 @@
                    (x-offset task-view-x-offset)
                    (task-counter task-view-task-counter)
                    (hide-completed-tasks task-view-hide-completed-tasks)
+                   (hide-past-tasks task-view-hide-past-tasks)
                    (hide-non-critical-tasks task-view-hide-non-critical-tasks))
-          task-view
+      task-view
     (let* ((pane-task-length (local-time:timestamp-difference end start))
            (pane-width (rectangle-width (sheet-region pane)))
            (pane-unit (/ pane-task-length pane-width))
@@ -227,7 +228,7 @@
              (task-end (cond ((end task)
                               (end task))
                              #+nil ((and progress (>= progress 1.0))
-                              task-start)
+                                    task-start)
                              ((gantt:last-child-task-end task)
                               (gantt:last-child-task-end task))
                              (no-dates
@@ -253,32 +254,39 @@
                       task
                       'task-group)
                    (with-bounding-rectangle* (x1 y1 x2 y2)
-                     (draw-task task
-                                pane
-                                (+ x-offset (* x-zoom (max 0 xstart)))
-                                y-offset
-                                (+ x-offset (* x-zoom (min xend pane-width)))
-                                (+ y-offset (* y-zoom task-height) bottom-margin)
-                                :fill-color task-color
-                                :border-color task-border-color
-                                :expanded expanded)
+                       (draw-task task
+                                  pane
+                                  (+ x-offset (* x-zoom (max 0 xstart)))
+                                  y-offset
+                                  (+ x-offset (* x-zoom (min xend pane-width)))
+                                  (+ y-offset (* y-zoom task-height) bottom-margin)
+                                  :fill-color task-color
+                                  :border-color task-border-color
+                                  :expanded expanded)
                      (declare (ignore x1 x2))
                      (incf y-offset (+ (- y2 y1) task-padding))
                      (incf task-counter))
                    (unless hide-task-children
                      (loop for child across (gantt:task-children task)
-                        do (let ((child-end (end child))
-                                 (child-progress (task-progress child))
-                                 (child-critical (gantt:task-critical child)))
+                        do (with-accessors ((child-start start)
+                                            (child-end end)
+                                            (child-progress task-progress)
+                                            (child-critical task-critical))
+                               child
                              (unless (or
                                       (and hide-non-critical-tasks
                                            (not (or child-critical
                                                     (find-task t child :key #'gantt:task-critical))))
                                       (and hide-completed-tasks
-                                              child-progress
-                                              (>= child-progress 1.0)))
-                               (unless (and child-end
-                                            (local-time:timestamp< child-end start)))
+                                           child-progress
+                                           (>= child-progress 1.0))
+                                      (and hide-past-tasks
+                                           (and child-end
+                                                (local-time:timestamp< child-end start)
+                                                (let ((zend child-end))
+                                                  (print (list (name child) zend) *trace-output*))))
+                                      (and (null child-start)
+                                           (null child-end)))
                                (present child 'task))))))))
             presentation))))))
 

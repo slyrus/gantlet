@@ -139,6 +139,10 @@
     (make-pane 'list-pane
 	       :value 'clim:region-intersection
 	       :name-key (lambda (x) (format nil "~(~A~)" x))))
+   (unscheduled-task-list
+    (make-pane 'list-pane
+	       :value 'clim:region-intersection
+	       :name-key (lambda (x) (format nil "~(~A~)" x))))
    (zoom-x :slider
            :min-value 0.1
            :max-value 10
@@ -174,8 +178,12 @@
                             zoom-y))
                         (labelling (:label "Zoom X")
                           zoom-x)))
-                (1/9 (labelling (:label "Resources")
-                       resource-list)))
+                (1/9
+                 (vertically ()
+                   (labelling (:label "Resources")
+                     resource-list)
+                   (labelling (:label "Unscheduled Tasks")
+                       unscheduled-task-list))))
               int))))
 
 (define-gantlet-app-command (com-quit :name t :keystroke (#\q :meta)) ()
@@ -263,6 +271,22 @@
       (setf hide-completed-tasks nil)
       (redraw *application-frame* gantlet-pane))))
 
+(define-gantlet-app-command (com-hide-past-tasks :name t) ()
+  (let* ((gantlet-pane (find-pane-named *application-frame* 'gantlet))
+         (task-view (stream-default-view gantlet-pane)))
+    (with-accessors ((hide-past-tasks task-view-hide-past-tasks))
+        task-view
+      (setf hide-past-tasks t)
+      (redraw *application-frame* gantlet-pane))))
+
+(define-gantlet-app-command (com-show-past-tasks :name t) ()
+  (let* ((gantlet-pane (find-pane-named *application-frame* 'gantlet))
+         (task-view (stream-default-view gantlet-pane)))
+    (with-accessors ((hide-past-tasks task-view-hide-past-tasks))
+        task-view
+      (setf hide-past-tasks nil)
+      (redraw *application-frame* gantlet-pane))))
+
 (define-gantlet-app-command (com-hide-non-critical-tasks :name t) ()
   (let* ((gantlet-pane (find-pane-named *application-frame* 'gantlet))
          (task-view (stream-default-view gantlet-pane)))
@@ -277,6 +301,26 @@
     (with-accessors ((hide-non-critical-tasks task-view-hide-non-critical-tasks))
         task-view
       (setf hide-non-critical-tasks nil)
+      (redraw *application-frame* gantlet-pane))))
+
+(define-gantlet-app-command (com-set-earlier-start-date :name t) ()
+  (let* ((gantlet-pane (find-pane-named *application-frame* 'gantlet))
+         (task-view (stream-default-view gantlet-pane)))
+    (with-accessors ((start task-view-start))
+        task-view
+      (setf start (local-time:adjust-timestamp
+                      start
+                    (:offset :month -1)))
+      (redraw *application-frame* gantlet-pane))))
+
+(define-gantlet-app-command (com-set-later-start-date :name t) ()
+  (let* ((gantlet-pane (find-pane-named *application-frame* 'gantlet))
+         (task-view (stream-default-view gantlet-pane)))
+    (with-accessors ((start task-view-start))
+        task-view
+      (setf start (local-time:adjust-timestamp
+                      start
+                    (:offset :month +1)))
       (redraw *application-frame* gantlet-pane))))
 
 (defmethod true-viewport-region ((pane gantlet-pane))

@@ -8,6 +8,7 @@
    (start :initarg :start :accessor task-view-start)
    (end :initarg :end :accessor task-view-end)
    (hide-completed-tasks :initform nil :initarg :hide-completed-tasks :accessor task-view-hide-completed-tasks)
+   (hide-past-tasks :initform t :initarg :hide-past-tasks :accessor task-view-hide-past-tasks)
    (hide-cost :initform t :initarg :hide-cost :accessor task-view-hide-cost)
    (hide-non-critical-tasks :initform nil :initarg :hide-non-critical-tasks :accessor task-view-hide-non-critical-tasks)
    (x-offset :initarg :x-offset :accessor task-view-x-offset :initform 5)
