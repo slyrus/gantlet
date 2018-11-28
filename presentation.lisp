@@ -352,8 +352,9 @@
                                (format nil "~A" year)
                                (+ (* x-zoom (elt year-coords i)) 4)
                                (+ y 15)
-                               :align-y :top
-                               :text-style style)
+                               :align-y :center
+                               :text-style style
+                               :ink +white+)
                    (draw-rectangle* pane
                                     (* x-zoom (elt year-coords i))
                                     y
@@ -408,8 +409,9 @@
                                          year)
                                  (+ (* x-zoom (elt quarter-coords i)) 4)
                                  (+ y 15)
-                                 :align-y :top
-                                 :text-style style))
+                                 :align-y :center
+                                 :text-style style
+                                 :ink +white+))
                    (draw-rectangle* pane
                                     (* x-zoom (elt quarter-coords i))
                                     y
@@ -461,8 +463,9 @@
                                          year)
                                  (+ (* x-zoom (elt month-coords i)) 4)
                                  (+ y 15)
-                                 :align-y :top
-                                 :text-style style))
+                                 :align-y :center
+                                 :text-style style
+                                 :ink +white+))
                    (draw-rectangle* pane
                                     (* x-zoom (elt month-coords i))
                                     y
@@ -559,7 +562,8 @@
           (draw-text* pane str
                       (+ x1 (/ (- x2 x1) 2)) 10
                       :align-x :center
-                      :align-y :top :text-style style))
+                      :align-y :top :text-style style
+                      :ink +white+))
         (incf task-view-y-offset height)))
     (when (not task-view-hide-cost)
       (let ((cost (cost task)))
@@ -580,7 +584,8 @@
                             (+ x1 (/ (- x2 x1) 2))
                             task-view-y-offset
                             :align-x :center
-                            :align-y :top :text-style style))
+                            :align-y :top :text-style style
+                            :ink +white+))
               (incf task-view-y-offset (+ 12 height))))))
       (let ((total-cost (cost task :include-finished t)))
         (when (and (not task-view-hide-cost) total-cost)
@@ -600,12 +605,16 @@
                             (+ x1 (/ (- x2 x1) 2))
                             task-view-y-offset
                             :align-x :center
-                            :align-y :top :text-style style))
+                            :align-y :top
+                            :text-style style
+                            :ink +white+))
               (incf task-view-y-offset (+ 12 height)))))))
     ;; draw timeline on top
     (draw-timeline pane task-view)
     (incf task-view-y-offset 65)
+
     (let ((today-top task-view-y-offset))
+      ;; now draw the child tasks
       (with-accessors ((start task-view-start)
                        (end task-view-end))
           task-view
@@ -614,28 +623,35 @@
           (loop for child across (gantt:task-children task)
              for task-group-counter from 0
              do
-               (let ((task-record
-                      (with-output-to-output-record (pane)
-                        (present child 'task))))
-                 (incf task-view-y-offset 8)
-                 (let ((background-record
-                        (with-output-to-output-record (pane)
-                          (let ((row-color (mod-elt *task-background-colors* task-group-counter))
-                                (task-padding 4))
-                            (with-bounding-rectangle* (x1 y1 x2 y2)
-                                task-record
-                              (draw-rectangle* pane
-                                               0 y1
-                                               (max (+ end-coord 18) (+ x2 3)) (+ y2 task-padding)
-                                               :ink row-color)
-                              (draw-rounded-rectangle* pane x1 (- y1 3) (+ x2 3) (+ y2 3)
-                                                       :ink +gray50+
-                                                       :filled nil
-                                                       :line-thickness 2))))))
-                   (add-output-record task-record background-record)
-                   (stream-add-output-record pane background-record))))))
+               (with-accessors ((child-start start)
+                                (child-end end))
+                   child
+                 (unless (and (null child-start)
+                              (null child-end))
+                   (let ((task-record
+                          (with-output-to-output-record (pane)
+                            (present child 'task))))
+                     (incf task-view-y-offset 24)
+                     (let ((background-record
+                            (with-output-to-output-record (pane)
+                              (let ((row-color (mod-elt *task-background-colors* task-group-counter))
+                                    (task-padding 4))
+                                (with-bounding-rectangle* (x1 y1 x2 y2)
+                                    task-record
+                                  (draw-rectangle* pane
+                                                   0 y1
+                                                   (max (+ end-coord 18) (+ x2 3)) (+ y2 task-padding)
+                                                   :ink row-color)
+                                  (draw-rounded-rectangle* pane x1 (- y1 3) (+ x2 3) (+ y2 3)
+                                                           :ink +gray50+
+                                                           :filled nil
+                                                           :line-thickness 2))))))
+                       (add-output-record task-record background-record)
+                       (stream-add-output-record pane background-record))))))))
+
       ;; draw a red rectangle around the current date
       (draw-today-highlight pane task-view :top (- today-top 4) :bottom (- task-view-y-offset 8)))
+
     ;; draw timeline on bottom
     (incf task-view-y-offset 4)
     (draw-timeline pane task-view)))

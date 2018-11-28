@@ -132,6 +132,7 @@
   (:menu-bar menubar-command-table)
   (:panes
    (gantlet gantlet-pane
+            :background +black+
             :display-function 'gantlet-display
             :display-time :command
             :height 600)
@@ -189,6 +190,14 @@
 (define-gantlet-app-command (com-quit :name t :keystroke (#\q :meta)) ()
   (frame-exit *application-frame*))
 
+(defun redraw-and-reset-scroll-extent (pane)
+  (let ((vis-region (pane-viewport-region pane)))
+    (with-bounding-rectangle* (x1 y1 x2 y2)
+        vis-region
+      (declare (ignore x2 y2))
+      (redraw *application-frame* pane)
+      (scroll-extent pane x1 y1))))
+
 ;; show task info
 (define-gantlet-app-command (com-show-task-info :name t :menu t
                                                 :keystroke (#\i :meta))
@@ -199,13 +208,7 @@
         task-view
       (let ((expanded (gethash task show-task-info-hash-table)))
         (setf (gethash task show-task-info-hash-table) (not expanded))
-        (redraw *application-frame* gantlet-pane)
-        #+nil
-        (notify-user *application-frame*
-	             (format nil "~A."
-		             (name task))
-	             :title (format nil "Information on ~A" (name task))
-	             :text-style '(:serif :roman 15))))))
+        (redraw-and-reset-scroll-extent gantlet-pane)))))
 
 (define-gesture-name show-task-info-gesture :pointer-button (:left))
 
@@ -233,7 +236,7 @@
         task-view
       (let ((expanded (gethash task hide-task-children-hash-table)))
         (setf (gethash task hide-task-children-hash-table) (not expanded))
-        (redraw *application-frame* gantlet-pane)))))
+        (redraw-and-reset-scroll-extent gantlet-pane)))))
 
 (define-presentation-to-command-translator hide-task-children-translator
     (task com-hide-task-children gantlet-app
@@ -261,7 +264,7 @@
     (with-accessors ((hide-completed-tasks task-view-hide-completed-tasks))
         task-view
       (setf hide-completed-tasks t)
-      (redraw *application-frame* gantlet-pane))))
+      (redraw-and-reset-scroll-extent gantlet-pane))))
 
 (define-gantlet-app-command (com-show-completed-tasks :name t) ()
   (let* ((gantlet-pane (find-pane-named *application-frame* 'gantlet))
@@ -269,7 +272,7 @@
     (with-accessors ((hide-completed-tasks task-view-hide-completed-tasks))
         task-view
       (setf hide-completed-tasks nil)
-      (redraw *application-frame* gantlet-pane))))
+      (redraw-and-reset-scroll-extent gantlet-pane))))
 
 (define-gantlet-app-command (com-hide-past-tasks :name t) ()
   (let* ((gantlet-pane (find-pane-named *application-frame* 'gantlet))
@@ -277,7 +280,7 @@
     (with-accessors ((hide-past-tasks task-view-hide-past-tasks))
         task-view
       (setf hide-past-tasks t)
-      (redraw *application-frame* gantlet-pane))))
+      (redraw-and-reset-scroll-extent gantlet-pane))))
 
 (define-gantlet-app-command (com-show-past-tasks :name t) ()
   (let* ((gantlet-pane (find-pane-named *application-frame* 'gantlet))
@@ -285,7 +288,7 @@
     (with-accessors ((hide-past-tasks task-view-hide-past-tasks))
         task-view
       (setf hide-past-tasks nil)
-      (redraw *application-frame* gantlet-pane))))
+      (redraw-and-reset-scroll-extent gantlet-pane))))
 
 (define-gantlet-app-command (com-hide-non-critical-tasks :name t) ()
   (let* ((gantlet-pane (find-pane-named *application-frame* 'gantlet))
@@ -293,7 +296,7 @@
     (with-accessors ((hide-non-critical-tasks task-view-hide-non-critical-tasks))
         task-view
       (setf hide-non-critical-tasks t)
-      (redraw *application-frame* gantlet-pane))))
+      (redraw-and-reset-scroll-extent gantlet-pane))))
 
 (define-gantlet-app-command (com-show-non-critical-tasks :name t) ()
   (let* ((gantlet-pane (find-pane-named *application-frame* 'gantlet))
@@ -301,7 +304,7 @@
     (with-accessors ((hide-non-critical-tasks task-view-hide-non-critical-tasks))
         task-view
       (setf hide-non-critical-tasks nil)
-      (redraw *application-frame* gantlet-pane))))
+      (redraw-and-reset-scroll-extent gantlet-pane))))
 
 (define-gantlet-app-command (com-set-earlier-start-date :name t) ()
   (let* ((gantlet-pane (find-pane-named *application-frame* 'gantlet))
@@ -311,7 +314,7 @@
       (setf start (local-time:adjust-timestamp
                       start
                     (:offset :month -1)))
-      (redraw *application-frame* gantlet-pane))))
+      (redraw-and-reset-scroll-extent gantlet-pane))))
 
 (define-gantlet-app-command (com-set-later-start-date :name t) ()
   (let* ((gantlet-pane (find-pane-named *application-frame* 'gantlet))
@@ -321,7 +324,7 @@
       (setf start (local-time:adjust-timestamp
                       start
                     (:offset :month +1)))
-      (redraw *application-frame* gantlet-pane))))
+      (redraw-and-reset-scroll-extent gantlet-pane))))
 
 (defmethod true-viewport-region ((pane gantlet-pane))
   (untransform-region (sheet-native-transformation pane)
