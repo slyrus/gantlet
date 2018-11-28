@@ -48,7 +48,7 @@
                     (let ((old-x-center (/ (+ new-x1 (/ (- new-x2 new-x1) 2)) old-x-scale)))
                       (setf new-x-pos (- (* old-x-center scale) (/ (- new-x2 new-x1) 2))
                             new-y-pos new-y1)
-                      (redraw *application-frame* pane)
+                      (redisplay-app *application-frame* pane)
                       #+nil
                       (progn
                         (draw-circle* pane
@@ -82,7 +82,7 @@
                       (let ((old-y-center (/ (+ new-y1 (/ (- new-y2 new-y1) 2)) old-y-scale)))
                         (setf new-x-pos new-x1
                               new-y-pos (- (* old-y-center scale) (/ (- new-y2 new-y1) 2)))
-                        (redraw *application-frame* pane))))
+                        (redisplay-app *application-frame* pane))))
                   ;; 2. set the viewport center to the previous viewport center
                   (when (and new-x-pos new-y-pos)
                     (scroll-extent pane new-x-pos new-y-pos)))))))))))
