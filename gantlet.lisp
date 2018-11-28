@@ -7,8 +7,6 @@
 ;;
 ;; 2. There's a lot of flickering.
 (defun zoom-x-drag (gadget scale)
-  (declare (optimize (debug 3)))
-  #+nil
   (let ((frame (pane-frame gadget)))
     (let ((pane (find-pane-named frame 'gantlet)))
       (when pane
@@ -31,7 +29,6 @@
                     (scroll-extent pane new-x-pos new-y-pos)))))))))))
 
 (defun zoom-x-value-changed (gadget scale)
-  (declare (optimize (debug 3)))
   (let ((frame (pane-frame gadget)))
     (let ((pane (find-pane-named frame 'gantlet)))
       (when pane
@@ -48,7 +45,7 @@
                     (let ((old-x-center (/ (+ new-x1 (/ (- new-x2 new-x1) 2)) old-x-scale)))
                       (setf new-x-pos (- (* old-x-center scale) (/ (- new-x2 new-x1) 2))
                             new-y-pos new-y1)
-                      (redisplay-app *application-frame* pane)
+                      (redraw *application-frame* pane)
                       #+nil
                       (progn
                         (draw-circle* pane
@@ -64,8 +61,6 @@
                   (scroll-extent pane new-x-pos new-y-pos))))))))))
 
 (defun zoom-y-drag (gadget scale)
-  (declare (optimize (debug 3)))
-  #+nil
   (let ((frame (pane-frame gadget)))
     (let ((pane (find-pane-named frame 'gantlet)))
       (when pane
@@ -82,7 +77,7 @@
                       (let ((old-y-center (/ (+ new-y1 (/ (- new-y2 new-y1) 2)) old-y-scale)))
                         (setf new-x-pos new-x1
                               new-y-pos (- (* old-y-center scale) (/ (- new-y2 new-y1) 2)))
-                        (redisplay-app *application-frame* pane))))
+                        (redraw *application-frame* pane))))
                   ;; 2. set the viewport center to the previous viewport center
                   (when (and new-x-pos new-y-pos)
                     (scroll-extent pane new-x-pos new-y-pos)))))))))))
