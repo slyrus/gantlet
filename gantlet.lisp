@@ -127,7 +127,7 @@
   (:menu-bar menubar-command-table)
   (:panes
    (gantlet gantlet-pane
-            :background +black+
+            :background *app-pane-background-color*
             :display-function 'gantlet-display
             :display-time :command
             :height 600)
