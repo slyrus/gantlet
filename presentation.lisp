@@ -100,7 +100,7 @@
                (lambda (pane)
                  (draw-rectangle* pane x1 y1 x2 y2 :ink fill-color))
                :shape :rectangle
-               :filled t
+               :filled nil
                :ink border-color
                :outline-ink border-color
                :line-thickness 3
