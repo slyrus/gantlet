@@ -341,7 +341,9 @@
 (defun write-task-to-pdf-file (task file
                                &key
                                  (device-type '(1600 1000))
-                                 view)
+                                 view
+                                 (zoom-x 1.0)
+                                 (zoom-y 1.0))
   (with-open-file (file-stream file :direction :output
                                :if-exists :supersede
                                :element-type '(unsigned-byte 8))
@@ -353,6 +355,8 @@
       (setf (stream-default-view stream)
             (or view (make-instance 'task-view
                                     :task task
+                                    :zoom-x zoom-x
+                                    :zoom-y zoom-y
                                     :start (start task)
                                     :end (end task))))
       (let ((*standard-output* stream))

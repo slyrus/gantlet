@@ -3,8 +3,8 @@
 
 (defclass task-view (view)
   ((task :initarg :task :accessor task-view-task)
-   (zoom-x-level :initform 1.0d0 :accessor zoom-x-level)
-   (zoom-y-level :initform 1.0d0 :accessor zoom-y-level)
+   (zoom-x-level :initform 1.0d0 :accessor zoom-x-level :initarg :zoom-x)
+   (zoom-y-level :initform 1.0d0 :accessor zoom-y-level :initarg :zoom-y)
    (start :initarg :start :accessor task-view-start)
    (end :initarg :end :accessor task-view-end)
    (hide-completed-tasks :initform nil :initarg :hide-completed-tasks :accessor task-view-hide-completed-tasks)
