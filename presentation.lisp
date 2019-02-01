@@ -47,7 +47,7 @@
                        border-color
                        (expanded t))
   (let* ((text-left-margin 6)
-         (text-top-margin 2)
+         (text-top-margin 3)
          (text-size :large)
          (family nil)
          (face :roman)
@@ -68,7 +68,7 @@
                  (multiple-value-bind (width height final-x final-y baseline)
 	             (text-size pane str :text-style style)
                    (declare (ignore final-x final-y baseline))
-                   (push (list str width (+ text-top-margin height)) text-list))))
+                   (push (list str width (+ height)) text-list))))
           (add-text name)
           (when expanded
             (when start-date
@@ -133,7 +133,7 @@
                                        text-x-offset
                                        (if expanded
                                            (+ y-offset text-top-margin)
-                                           (+ y-offset (/ (- y2 y1) 2)))
+                                           (+ y-offset text-top-margin (/ (- y2 y1) 2)))
                                        :align-y (if expanded :top :center)
                                        :ink text-color
                                        :text-style style)
@@ -175,7 +175,7 @@
            (pane-unit (/ pane-task-length pane-width))
            (task-height 6)
            (task-padding 2)
-           (bottom-margin 1)
+           (bottom-margin 3)
            (x-zoom (zoom-x-level task-view))
            (y-zoom (zoom-y-level task-view))
            (no-dates (and (null (start task))
