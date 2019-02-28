@@ -219,6 +219,14 @@
     (object)
   (list object))
 
+(define-gantlet-app-command (com-show-all-child-tasks :name t :menu t) ()
+  (let* ((gantlet-pane (find-pane-named *application-frame* 'gantlet))
+         (task-view (stream-default-view gantlet-pane)))
+    (with-accessors ((hide-task-children-hash-table task-view-hide-task-children-hash-table))
+        task-view
+      (clrhash hide-task-children-hash-table)
+      (redraw-and-reset-scroll-extent gantlet-pane))))
+
 ;; hide task children
 (define-gesture-name hide-task-children-gesture :pointer-button (:left :control))
 
