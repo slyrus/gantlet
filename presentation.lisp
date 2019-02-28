@@ -40,6 +40,8 @@
 ;; task-group presentation
 (define-presentation-type task-group ())
 
+(defparameter *default-text-size* :normal)
+
 ;;
 ;; actual drawing routines
 (defun draw-task (task pane x1 y1 x2 y2
@@ -47,8 +49,8 @@
                        border-color
                        (expanded t))
   (let* ((text-left-margin 6)
-         (text-top-margin 3)
-         (text-size :large)
+         (text-top-margin 2)
+         (text-size *default-text-size*)
          (family nil)
          (face :roman)
          (style (make-text-style family face text-size)))
@@ -104,16 +106,16 @@
                :ink border-color
                :outline-ink border-color
                :line-thickness 3
-               :padding-left 1
-               :padding-right 0
-               :padding-top 1
-               :padding-bottom 0)
+               :padding-left 0
+               :padding-right -2
+               :padding-top 0
+               :padding-bottom -2)
               (with-output-as-presentation
                   (pane nil 'mute-presentation :record-type 'mute-presentation)
                 (when progress
                   (draw-rectangle* pane
                                    x1
-                                   y1
+                                   (+ y1 1)
                                    (+ (* (- x2 x1) progress) x1)
                                    (+ y1 5)
                                    :ink *complete-task-color* :filled t)))
@@ -175,7 +177,7 @@
            (pane-unit (/ pane-task-length pane-width))
            (task-height 6)
            (task-padding 2)
-           (bottom-margin 3)
+           (bottom-margin 2)
            (x-zoom (zoom-x-level task-view))
            (y-zoom (zoom-y-level task-view))
            (no-dates (and (null (start task))
@@ -447,7 +449,7 @@
            (pane-unit (/ pane-task-length pane-width))
            (family :sans-serif)
            (face :bold)
-           (size :large)
+           (size *default-text-size*)
            (timeline-style (make-text-style family face size)))
       (let* ((zoom-task-days (/ (/ pane-task-length local-time:+seconds-per-day+) x-zoom))
              (zoom-task-weeks (/ zoom-task-days local-time:+days-per-week+))
@@ -509,7 +511,7 @@
       task-view
     (setf task-view-task-counter 0
           task-view-x-offset 5
-          task-view-y-offset 26)
+          task-view-y-offset 18)
     (let* ((str (name task))
            (family :sans-serif)
            (face :bold)
@@ -522,7 +524,7 @@
             pane
           (declare (ignore y1 y2))
           (draw-text* pane str
-                      (+ x1 (/ (- x2 x1) 2)) 10
+                      (+ x1 (/ (- x2 x1) 2)) 4
                       :align-x :center
                       :align-y :top :text-style style
                       :ink *task-text-color*))
@@ -573,7 +575,7 @@
               (incf task-view-y-offset (+ 12 height)))))))
     ;; draw timeline on top
     (draw-timeline pane task-view)
-    (incf task-view-y-offset 65)
+    (incf task-view-y-offset 60)
 
     (let ((today-top task-view-y-offset))
       ;; now draw the child tasks
@@ -597,7 +599,7 @@
                      (let ((background-record
                             (with-output-to-output-record (pane)
                               (let ((row-color (mod-elt *task-background-colors* task-group-counter))
-                                    (task-padding 4))
+                                    (task-padding 2))
                                 (with-bounding-rectangle* (x1 y1 x2 y2)
                                     task-record
                                   (draw-rectangle* pane
