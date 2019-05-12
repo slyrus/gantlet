@@ -119,11 +119,12 @@
   ((task :initarg :task :accessor gantlet-app-task))
   (:menu-bar menubar-command-table)
   (:panes
-   (gantlet gantlet-pane
-            :background *app-pane-background-color*
-            :display-function 'gantlet-display
-            :display-time :command-loop
-            :height 600)
+   (gantlet (make-pane 'gantlet-pane
+                       :background *app-pane-background-color*
+                       :display-function 'gantlet-display
+                       :display-time :command-loop
+                       :height 600
+                       :task (gantlet-app-task *application-frame*)))
    (resource-list
     (make-pane 'list-pane
 	       :value 'clim:region-intersection
@@ -175,14 +176,28 @@
                        unscheduled-task-list))))
               int))))
 
+(defun update-list-panes (task)
+  (let ((resource-list (find-pane-named *application-frame* 'resource-list)))
+    (when resource-list
+      (let ((resources (task-resources task)))
+        (setf (climi::visible-items resource-list) (length resources))
+        (setf (clime:list-pane-items resource-list :invoke-callback nil)
+              (mapcar #'name resources)))))
+  (let ((unscheduled-task-list (find-pane-named *application-frame* 'unscheduled-task-list)))
+    (when unscheduled-task-list
+      (let ((unscheduled-tasks
+             (remove-if (lambda (x) (and (numberp (task-progress x))
+                                         (>= (task-progress x) 1)))
+                        (unscheduled-tasks task))))
+        (setf (climi::visible-items unscheduled-task-list) (length unscheduled-tasks))
+        (setf (clime:list-pane-items unscheduled-task-list :invoke-callback nil)
+              (mapcar #'name unscheduled-tasks))))))
+
 (defun gantlet-display (frame pane)
-  (unless (pane-task pane)
-    (let ((application-task (gantlet-app-task frame)))
-      (when application-task
-        (set-pane-task pane application-task))))
   (let* ((pane-task (pane-task pane)))
     (when pane-task
       (present pane-task 'top-level-task)
+      (update-list-panes pane-task)
       (clim:replay (clim:stream-output-history pane) pane))))
 
 (define-gantlet-app-command (com-quit :name t :keystroke (#\q :meta)) ()
