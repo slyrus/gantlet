@@ -244,9 +244,7 @@
                                            (>= child-progress 1.0))
                                       (and hide-past-tasks
                                            (and child-end
-                                                (local-time:timestamp< child-end start)
-                                                (let ((zend child-end))
-                                                  (print (list (name child) zend) *trace-output*))))
+                                                (local-time:timestamp< child-end start)))
                                       (and (null child-start)
                                            (null child-end)))
                                (present child 'task))))))))
