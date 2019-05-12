@@ -115,21 +115,14 @@
                 (when (and new-x-pos new-y-pos)
                   (scroll-extent pane new-x-pos new-y-pos))))))))))
 
-(defun gantlet-display (frame pane)
-  (declare (ignore frame))
-  (let* ((task (pane-task pane)))
-    (when task
-      (present task 'top-level-task)
-      (clim:replay (clim:stream-output-history pane) pane))))
-
 (define-application-frame gantlet-app ()
-  ()
+  ((task :initarg :task :accessor gantlet-app-task))
   (:menu-bar menubar-command-table)
   (:panes
    (gantlet gantlet-pane
             :background *app-pane-background-color*
             :display-function 'gantlet-display
-            :display-time :command
+            :display-time :command-loop
             :height 600)
    (resource-list
     (make-pane 'list-pane
@@ -181,6 +174,16 @@
                    (labelling (:label "Unscheduled Tasks")
                        unscheduled-task-list))))
               int))))
+
+(defun gantlet-display (frame pane)
+  (unless (pane-task pane)
+    (let ((application-task (gantlet-app-task frame)))
+      (when application-task
+        (set-pane-task pane application-task))))
+  (let* ((pane-task (pane-task pane)))
+    (when pane-task
+      (present pane-task 'top-level-task)
+      (clim:replay (clim:stream-output-history pane) pane))))
 
 (define-gantlet-app-command (com-quit :name t :keystroke (#\q :meta)) ()
   (frame-exit *application-frame*))
@@ -401,10 +404,11 @@
 
 (defvar *gantlet-application*)
 
-(defun run-gantlet (&key (height 1200) (width 1600))
+(defun run-gantlet (&key (height 1200) (width 1600) task)
   (let ((frame (setf *gantlet-application* (make-application-frame 'gantlet-app
                                                                    :height height
-                                                                   :width width))))
+                                                                   :width width
+                                                                   :task task))))
     (values frame
             (bt:make-thread
              (lambda ()
