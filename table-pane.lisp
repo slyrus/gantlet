@@ -1,14 +1,28 @@
 
 (in-package #:gantlet)
 
-(defclass gantlet-pane (application-pane table-pane)
+(defclass gantlet-table-pane (application-pane table-pane)
   ((task :initarg :task :initform nil :accessor pane-task)))
 
-(defgeneric set-pane-task (pane task))
+(defclass task-table-view (view)
+  ((task :initarg :task :accessor task-view-task)
+   (zoom-x-level :initform 1.0d0 :accessor zoom-x-level :initarg :zoom-x)
+   (zoom-y-level :initform 1.0d0 :accessor zoom-y-level :initarg :zoom-y)
+   (start :initarg :start :accessor task-view-start)
+   (end :initarg :end :accessor task-view-end)
+   (hide-completed-tasks :initform nil :initarg :hide-completed-tasks :accessor task-view-hide-completed-tasks)
+   (hide-past-tasks :initform t :initarg :hide-past-tasks :accessor task-view-hide-past-tasks)
+   (hide-cost :initform t :initarg :hide-cost :accessor task-view-hide-cost)
+   (hide-non-critical-tasks :initform nil :initarg :hide-non-critical-tasks :accessor task-view-hide-non-critical-tasks)
+   (x-offset :initarg :x-offset :accessor task-view-x-offset :initform 5)
+   (y-offset :initarg :y-offset :accessor task-view-y-offset :initform 0)
+   (task-counter :initarg :task-counter :accessor task-view-task-counter :initform 0)
+   (show-task-info-hash-table :accessor task-view-show-task-info-hash-table :initform (make-hash-table))
+   (hide-task-children-hash-table :accessor task-view-hide-task-children-hash-table :initform (make-hash-table))))
 
-(defmethod set-pane-task ((pane gantlet-pane) task)
+(defmethod set-pane-task ((pane gantlet-table-pane) task)
   (setf (pane-task pane) task)
-  (let ((task-view (make-instance 'task-view
+  (let ((task-view (make-instance 'task-table-view
                        :task task
                        :start (start task)
                        :end (end task))))
@@ -38,17 +52,8 @@
     (pane-needs-redisplay pane)
     (repaint-sheet pane +everywhere+)))
 
-(defmethod shared-initialize :after ((pane gantlet-pane) slot-names &key)
+(defmethod shared-initialize :after ((pane gantlet-table-pane) slot-names &key)
   (let ((task (pane-task pane)))
     (when task
       (set-pane-task pane task))))
-
-(defun redraw (frame pane)
-  (setf (pane-needs-redisplay pane) t)
-  (clim:redisplay-frame-pane frame pane))
-
-;; this is currently called by the redisplay command but this and the
-;; command can probably both go away.
-(defun redisplay-app (frame pane)
-  (clim:redisplay-frame-pane frame pane))
 

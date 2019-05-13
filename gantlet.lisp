@@ -119,9 +119,16 @@
   ((task :initarg :task :accessor gantlet-app-task))
   (:menu-bar menubar-command-table)
   (:panes
+   #+nil
    (gantlet (make-pane 'gantlet-pane
                        :background *app-pane-background-color*
-                       :display-function 'gantlet-display
+                       :display-function 'gantlet-pane-display
+                       :display-time :command-loop
+                       :height 600
+                       :task (gantlet-app-task *application-frame*)))
+   (gantlet-table (make-pane 'gantlet-table-pane
+                       :background *app-pane-background-color*
+                       :display-function 'gantlet-table-display
                        :display-time :command-loop
                        :height 600
                        :task (gantlet-app-task *application-frame*)))
@@ -163,7 +170,7 @@
                 (8/9 (vertically ()
                         (horizontally ()
                           (scrolling ()
-                            gantlet)
+                            gantlet-table)
                           (labelling (:label "Zoom Y")
                             zoom-y))
                         (labelling (:label "Zoom X")
@@ -193,7 +200,14 @@
         (setf (clime:list-pane-items unscheduled-task-list :invoke-callback nil)
               (mapcar #'name unscheduled-tasks))))))
 
-(defun gantlet-display (frame pane)
+(defun gantlet-pane-display (frame pane)
+  (let* ((pane-task (pane-task pane)))
+    (when pane-task
+      (present pane-task 'top-level-task)
+      (update-list-panes pane-task)
+      (clim:replay (clim:stream-output-history pane) pane))))
+
+(defun gantlet-table-display (frame pane)
   (let* ((pane-task (pane-task pane)))
     (when pane-task
       (present pane-task 'top-level-task)

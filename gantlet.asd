@@ -7,5 +7,7 @@
    (:file "style")
    (:file "view")
    (:file "pane")
+   (:file "table-pane")
    (:file "presentation")
+   (:file "table-presentation")
    (:file "gantlet")))
