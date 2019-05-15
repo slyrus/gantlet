@@ -1,12 +1,15 @@
 
 (in-package #:gantlet)
 
-#+nil (define-presentation-method present (task (type task) pane
-                                                (task-view task-table-view) &key))
+#+nil
+(defun present-task (task pane task-view &key (level 0)))
 
-(defun present-task (task pane task-view &key (level 0))
+(define-presentation-method present (task (type task-output-record) pane
+                                          (task-view task-table-view) &key)
+  ;; level is automagically passed in as a presentation-type
+  ;; "option". CLIM black magic at work.
   (with-output-as-presentation
-      (t task 'task :view task-view)
+      (t task 'task :record-type 'task-output-record)
     (with-accessors ((start task-view-start)
                      (end task-view-end)
                      (show-task-info-hash-table task-view-show-task-info-hash-table)
@@ -63,10 +66,11 @@
                        (formatting-row (pane)
                          (formatting-column (pane)
                            (formatting-cell (pane :align-x :left)
-                             (indenting-output (pane (* 10 level))
-                               (format pane "~A~A"
-                                       (coerce (make-array (* 2 level) :initial-element #\Space) 'string)
-                                       name))))
+                             ;; This indenting output form doesn't work as expected.
+                             #+nil (indenting-output (pane (* 10 level)))
+                             (format pane "~A~A"
+                                     (coerce (make-array (* 2 level) :initial-element #\Space) 'string)
+                                     name)))
                          (formatting-column (pane)
                            (formatting-cell (pane :align-x :left)
                              (format pane "~A" (date-string task-start))))
@@ -91,7 +95,7 @@
                                                   (local-time:timestamp< child-end start)))
                                         (and (null child-start)
                                              (null child-end)))
-                                 (present-task child pane task-view :level (1+ level)))))))))
+                                 (present child `((task-output-record) :level ,(1+ level))))))))))
               presentation)))))))
 
 (define-presentation-method present (task (type top-level-task) pane
@@ -127,5 +131,5 @@
 
                    (with-output-as-presentation
                        (t task 'task-group)
-                     (present-task child pane task-view :level 0)))))))))))
+                     (present child '((task-output-record) :level 0))))))))))))
 

@@ -119,19 +119,19 @@
   ((task :initarg :task :accessor gantlet-app-task))
   (:menu-bar menubar-command-table)
   (:panes
-   #+nil
-   (gantlet (make-pane 'gantlet-pane
-                       :background *app-pane-background-color*
-                       :display-function 'gantlet-pane-display
-                       :display-time :command-loop
-                       :height 600
-                       :task (gantlet-app-task *application-frame*)))
-   (gantlet-table (make-pane 'gantlet-table-pane
-                       :background *app-pane-background-color*
-                       :display-function 'gantlet-table-display
-                       :display-time :command-loop
-                       :height 600
-                       :task (gantlet-app-task *application-frame*)))
+   (gantlet
+    #+nil (make-pane 'gantlet-chart-pane
+                     :background *app-pane-background-color*
+                     :display-function 'gantlet-chart-display
+                     :display-time :command-loop
+                     :height 600
+                     :task (gantlet-app-task *application-frame*))
+    (make-pane 'gantlet-table-pane
+               :background *app-pane-background-color*
+               :display-function 'gantlet-table-display
+               :display-time :command-loop
+               :height 600
+               :task (gantlet-app-task *application-frame*)))
    (resource-list
     (make-pane 'list-pane
 	       :value 'clim:region-intersection
@@ -170,7 +170,7 @@
                 (8/9 (vertically ()
                         (horizontally ()
                           (scrolling ()
-                            gantlet-table)
+                            gantlet)
                           (labelling (:label "Zoom Y")
                             zoom-y))
                         (labelling (:label "Zoom X")
@@ -200,7 +200,7 @@
         (setf (clime:list-pane-items unscheduled-task-list :invoke-callback nil)
               (mapcar #'name unscheduled-tasks))))))
 
-(defun gantlet-pane-display (frame pane)
+(defun gantlet-chart-display (frame pane)
   (let* ((pane-task (pane-task pane)))
     (when pane-task
       (present pane-task 'top-level-task)
@@ -361,6 +361,8 @@
                     (:offset :month +1)))
       (redraw-and-reset-scroll-extent gantlet-pane))))
 
+;; do we need this??
+#+nil
 (defmethod true-viewport-region ((pane gantlet-pane))
   (untransform-region (sheet-native-transformation pane)
                       (sheet-native-region pane)))

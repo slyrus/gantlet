@@ -1,47 +1,6 @@
 
 (in-package #:gantlet)
 
-(defclass task-output-record (standard-presentation)
-  ((task :initarg :task :accessor task)))
-
-(defun date-string (date)
-  (local-time:format-timestring nil date :format local-time:+iso-8601-date-format+))
-
-;;
-;;
-;; Presentations
-
-;;
-;; task-output-record - nothing exciting happens here now
-(define-presentation-type task-output-record ())
-
-;;
-;; top-level-task -- use this handle the backgrounds, etc...
-(defclass top-level-task (standard-presentation)
-  ())
-
-(define-presentation-type top-level-task ()
-  :inherit-from 'task)
-
-(defmethod output-record-refined-position-test ((record top-level-task) x y)
-  nil)
-
-;;
-;; mute-presentation - children of this tree are not highlighted
-(defclass mute-presentation (standard-presentation)
-  ())
-
-(define-presentation-type mute-presentation ())
-
-(defmethod highlight-output-record-tree ((record mute-presentation) stream state)
-  nil)
-
-
-;; task-group presentation
-(define-presentation-type task-group ())
-
-(defparameter *default-text-size* :normal)
-
 ;;
 ;; actual drawing routines
 (defun draw-task (task pane x1 y1 x2 y2
@@ -156,11 +115,8 @@
 ;; 2. setup/present the task details and (recursively) do the same for
 ;; child tasks
 
-(defun mod-elt (sequence index)
-  (elt sequence (mod index (length sequence))))
-
 (define-presentation-method present (task (type task) pane
-                                          (task-view task-view) &key)
+                                          (task-view task-chart-view) &key)
   (with-accessors ((start task-view-start)
                    (end task-view-end)
                    (show-task-info-hash-table task-view-show-task-info-hash-table)
@@ -500,7 +456,7 @@
                          :filled nil)))))
 
 (define-presentation-method present (task (type top-level-task) pane
-                                          (task-view task-view) &key)
+                                          (task-view task-chart-view) &key)
   (with-accessors ((task-view-task-counter task-view-task-counter)
                    (task-view-x-offset task-view-x-offset)
                    (task-view-y-offset task-view-y-offset)

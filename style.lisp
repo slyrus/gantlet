@@ -57,3 +57,5 @@
 
 (defparameter *app-pane-background-color* +white+)
 
+(defparameter *default-text-size* :normal)
+
