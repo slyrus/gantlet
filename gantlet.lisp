@@ -120,18 +120,21 @@
   (:menu-bar menubar-command-table)
   (:panes
    (gantlet
-    #+nil (make-pane 'gantlet-chart-pane
+    (make-pane 'gantlet-chart-pane
+               :background *app-pane-background-color*
+               :display-function 'gantlet-chart-display
+               :display-time :command-loop
+               :height 600
+               :width 200
+               :task (gantlet-app-task *application-frame*)))
+   (gantlet-pane-2
+    (make-pane 'gantlet-table-pane
                      :background *app-pane-background-color*
                      :display-function 'gantlet-chart-display
                      :display-time :command-loop
                      :height 600
-                     :task (gantlet-app-task *application-frame*))
-    (make-pane 'gantlet-table-pane
-               :background *app-pane-background-color*
-               :display-function 'gantlet-table-display
-               :display-time :command-loop
-               :height 600
-               :task (gantlet-app-task *application-frame*)))
+                     :width 400
+                     :task (gantlet-app-task *application-frame*)))
    (resource-list
     (make-pane 'list-pane
 	       :value 'clim:region-intersection
@@ -171,6 +174,8 @@
                         (horizontally ()
                           (scrolling ()
                             gantlet)
+                          (scrolling ()
+                            gantlet-pane-2)
                           (labelling (:label "Zoom Y")
                             zoom-y))
                         (labelling (:label "Zoom X")
@@ -203,14 +208,14 @@
 (defun gantlet-chart-display (frame pane)
   (let* ((pane-task (pane-task pane)))
     (when pane-task
-      (present pane-task 'top-level-task)
+      (present pane-task 'top-level-task :stream pane)
       (update-list-panes pane-task)
       (clim:replay (clim:stream-output-history pane) pane))))
 
 (defun gantlet-table-display (frame pane)
   (let* ((pane-task (pane-task pane)))
     (when pane-task
-      (present pane-task 'top-level-task)
+      (present pane-task 'top-level-task :stream pane)
       (update-list-panes pane-task)
       (clim:replay (clim:stream-output-history pane) pane))))
 
@@ -368,6 +373,7 @@
                       (sheet-native-region pane)))
 
 (define-gantlet-app-command (com-redisplay :name t) ()
+  #+nil
   (let ((gantlet-pane (find-pane-named *application-frame* 'gantlet)))
     (when gantlet-pane
       (redisplay-app *application-frame* gantlet-pane)

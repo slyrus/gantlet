@@ -203,7 +203,7 @@
                                                 (local-time:timestamp< child-end start)))
                                       (and (null child-start)
                                            (null child-end)))
-                               (present child 'task))))))))
+                               (present child 'task :stream pane))))))))
             presentation))))))
 
 ;;
@@ -548,7 +548,7 @@
                               (null child-end))
                    (let ((task-record
                           (with-output-to-output-record (pane)
-                            (present child 'task))))
+                            (present child 'task :stream pane))))
                      (incf task-view-y-offset 24)
                      (let ((background-record
                             (with-output-to-output-record (pane)

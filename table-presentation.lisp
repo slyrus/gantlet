@@ -1,15 +1,12 @@
 
 (in-package #:gantlet)
 
-#+nil
-(defun present-task (task pane task-view &key (level 0)))
-
 (define-presentation-method present (task (type task-output-record) pane
                                           (task-view task-table-view) &key)
   ;; level is automagically passed in as a presentation-type
   ;; "option". CLIM black magic at work.
   (with-output-as-presentation
-      (t task 'task :record-type 'task-output-record)
+      (t task 'task :record-type 'task-output-record :single-box t)
     (with-accessors ((start task-view-start)
                      (end task-view-end)
                      (show-task-info-hash-table task-view-show-task-info-hash-table)
@@ -60,42 +57,47 @@
                                        *critical-task-border-color*
                                        (mod-elt *task-border-colors* task-counter))))
             (let ((presentation
-                   (with-output-as-presentation (t task 'task-group)
+                   (with-output-as-presentation (t task 'task-group :single-box t)
                      (with-accessors ((name name))
                          task
                        (formatting-row (pane)
-                         (formatting-column (pane)
-                           (formatting-cell (pane :align-x :left)
-                             ;; This indenting output form doesn't work as expected.
-                             #+nil (indenting-output (pane (* 10 level)))
-                             (format pane "~A~A"
-                                     (coerce (make-array (* 2 level) :initial-element #\Space) 'string)
-                                     name)))
-                         (formatting-column (pane)
-                           (formatting-cell (pane :align-x :left)
-                             (format pane "~A" (date-string task-start))))
-                         (formatting-column (pane)
-                           (formatting-cell (pane :align-x :left)
-                             (format pane "~A" (date-string task-end)))))
-                       (loop for child across (gantt:task-children task)
-                          do (with-accessors ((child-start start)
-                                              (child-end end)
-                                              (child-progress task-progress)
-                                              (child-critical task-critical))
-                                 child
-                               (unless (or
-                                        (and hide-non-critical-tasks
-                                             (not (or child-critical
-                                                      (find-task t child :key #'gantt:task-critical))))
-                                        (and hide-completed-tasks
-                                             child-progress
-                                             (>= child-progress 1.0))
-                                        (and hide-past-tasks
-                                             (and child-end
-                                                  (local-time:timestamp< child-end start)))
-                                        (and (null child-start)
-                                             (null child-end)))
-                                 (present child `((task-output-record) :level ,(1+ level))))))))))
+                         (formatting-cell (pane :align-x :right)
+                           (if (plusp (length (gantt:task-children task)))
+                             (if hide-task-children
+                                 (format pane "~A" ">")
+                                 (format pane "~A" "V"))
+                             (format pane "~A" "|")))
+                         (formatting-cell (pane :align-x :left)
+                           ;; This indenting output form doesn't work as expected.
+                           #+nil (indenting-output (pane (* 10 level)))
+                           (format pane "~A~A"
+                                   (coerce (make-array (* 2 level) :initial-element #\Space) 'string)
+                                   name))
+                         (formatting-cell (pane :align-x :left)
+                           (format pane "~A" (date-string task-start)))
+                         (formatting-cell (pane :align-x :left)
+                           (format pane "~A" (date-string task-end))))
+                       (unless hide-task-children
+                         (loop for child across (gantt:task-children task)
+                            do (with-accessors ((child-start start)
+                                                (child-end end)
+                                                (child-progress task-progress)
+                                                (child-critical task-critical))
+                                   child
+                                 (unless (or
+                                          (and hide-non-critical-tasks
+                                               (not (or child-critical
+                                                        (find-task t child :key #'gantt:task-critical))))
+                                          (and hide-completed-tasks
+                                               child-progress
+                                               (>= child-progress 1.0))
+                                          (and hide-past-tasks
+                                               (and child-end
+                                                    (local-time:timestamp< child-end start)))
+                                          (and (null child-start)
+                                               (null child-end)))
+                                   (present child `((task-output-record) :level ,(1+ level))
+                                            :stream pane)))))))))
               presentation)))))))
 
 (define-presentation-method present (task (type top-level-task) pane
@@ -130,6 +132,7 @@
                               (null child-end))
 
                    (with-output-as-presentation
-                       (t task 'task-group)
-                     (present child '((task-output-record) :level 0))))))))))))
+                       (t task 'task-group :single-box t)
+                     (present child '((task-output-record) :level 0)
+                              :stream pane)))))))))))
 
