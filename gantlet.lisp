@@ -127,7 +127,7 @@
                :height 600
                :width 200
                :task (gantlet-app-task *application-frame*)))
-   (gantlet-pane-2
+   (gantlet-table
     (make-pane 'gantlet-table-pane
                      :background *app-pane-background-color*
                      :display-function 'gantlet-chart-display
@@ -173,9 +173,9 @@
                 (8/9 (vertically ()
                         (horizontally ()
                           (scrolling ()
-                            gantlet)
+                            gantlet-table)
                           (scrolling ()
-                            gantlet-pane-2)
+                            gantlet)
                           (labelling (:label "Zoom Y")
                             zoom-y))
                         (labelling (:label "Zoom X")

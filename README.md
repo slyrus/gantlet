@@ -29,13 +29,7 @@ To run this:
     (asdf:load-system "gantt-example")
     (asdf:load-system "gantlet")
 
-    (let ((app (gantlet::gantlet-main)))
-      (sleep 1.0)
-      (let ((gantlet-pane (clim:find-pane-named app 'gantlet::gantlet)))
-        (gantlet::set-pane-task gantlet-pane gantt-example::*example-project*)
-        (gantlet::redraw app gantlet-pane)))
-
-Unfortunately, one must still manually redraw the application pane to
-see the data. Select Redraw from the Gantt menu to see the data.
+    (defparameter *application*
+      (gantlet:run-gantlet :task gantt-example::*example-project*))
 
 More documentation to follow.
