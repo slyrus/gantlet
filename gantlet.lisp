@@ -130,7 +130,7 @@
    (gantlet-table
     (make-pane 'gantlet-table-pane
                      :background *app-pane-background-color*
-                     :display-function 'gantlet-chart-display
+                     :display-function 'gantlet-table-display
                      :display-time :command-loop
                      :height 600
                      :width 400
@@ -188,6 +188,11 @@
                        unscheduled-task-list))))
               int))))
 
+(defun gantlet-panes ()
+  (mapcar (lambda (pane-name)
+            (find-pane-named *application-frame* pane-name))
+          '(gantlet gantlet-table)))
+
 (defun update-list-panes (task)
   (let ((resource-list (find-pane-named *application-frame* 'resource-list)))
     (when resource-list
@@ -208,14 +213,14 @@
 (defun gantlet-chart-display (frame pane)
   (let* ((pane-task (pane-task pane)))
     (when pane-task
-      (present pane-task 'top-level-task :stream pane)
+      (present pane-task 'chart-top-level-task :stream pane)
       (update-list-panes pane-task)
       (clim:replay (clim:stream-output-history pane) pane))))
 
 (defun gantlet-table-display (frame pane)
   (let* ((pane-task (pane-task pane)))
     (when pane-task
-      (present pane-task 'top-level-task :stream pane)
+      (present pane-task 'table-top-level-task :stream pane)
       (update-list-panes pane-task)
       (clim:replay (clim:stream-output-history pane) pane))))
 
@@ -230,125 +235,89 @@
       (redraw *application-frame* pane)
       (scroll-extent pane x1 y1))))
 
+(defmacro do-for-gantlet-panes ((pane view) &body body)
+  `(loop for ,pane in (gantlet-panes)
+      do
+        (let* ((,view (stream-default-view ,pane)))
+          ,@body)))
+
 ;; show task info
 (define-gantlet-app-command (com-show-task-info :name t :menu t
                                                 :keystroke (#\i :meta))
     ((task task))
-  (let* ((gantlet-pane (find-pane-named *application-frame* 'gantlet))
-         (task-view (stream-default-view gantlet-pane)))
+  (do-for-gantlet-panes (gantlet-pane task-view)
     (with-accessors ((show-task-info-hash-table task-view-show-task-info-hash-table))
         task-view
       (let ((expanded (gethash task show-task-info-hash-table)))
         (setf (gethash task show-task-info-hash-table) (not expanded))
         (redraw-and-reset-scroll-extent gantlet-pane)))))
 
-(define-gesture-name show-task-info-gesture :pointer-button (:left))
-
-(define-presentation-to-command-translator show-task-info-translator
-    (task com-show-task-info gantlet-app
-          :gesture show-task-info-gesture
-          :menu nil
-          :tester ((object presentation event context-type)
-                   (declare (ignore presentation event context-type))
-                   #+(or) (print context-type *debug-io*)
-                   (taskp object))
-          :documentation "Show info for this task.")
-    (object)
-  (list object))
-
 (define-gantlet-app-command (com-show-all-child-tasks :name t :menu t) ()
-  (let* ((gantlet-pane (find-pane-named *application-frame* 'gantlet))
-         (task-view (stream-default-view gantlet-pane)))
+  (do-for-gantlet-panes (gantlet-pane task-view)
     (with-accessors ((hide-task-children-hash-table task-view-hide-task-children-hash-table))
         task-view
       (clrhash hide-task-children-hash-table)
       (redraw-and-reset-scroll-extent gantlet-pane))))
 
-;; hide task children
-(define-gesture-name hide-task-children-gesture :pointer-button (:left :control))
-
 (define-gantlet-app-command (com-hide-task-children :name t :menu t
                                                     :keystroke (#\h :meta))
     ((task task))
-  (let* ((gantlet-pane (find-pane-named *application-frame* 'gantlet))
-         (task-view (stream-default-view gantlet-pane)))
+  (do-for-gantlet-panes (gantlet-pane task-view)
     (with-accessors ((hide-task-children-hash-table task-view-hide-task-children-hash-table))
         task-view
       (let ((expanded (gethash task hide-task-children-hash-table)))
         (setf (gethash task hide-task-children-hash-table) (not expanded))
         (redraw-and-reset-scroll-extent gantlet-pane)))))
 
-(define-presentation-to-command-translator hide-task-children-translator
-    (task com-hide-task-children gantlet-app
-          :gesture hide-task-children-gesture
-          :menu nil
-          :tester ((object presentation event)
-                   (declare (ignore presentation event))
-                   (taskp object))
-          :documentation "Hide children for this task.")
-    (object)
-  (list object))
-
 (define-gantlet-app-command (com-redraw :name t) ()
-  (let ((gantlet-pane (find-pane-named *application-frame* 'gantlet)))
-    (when gantlet-pane
-      (redraw *application-frame* gantlet-pane)
-      #+nil
-      (let ((region (or (pane-viewport-region gantlet-pane)
-                        (sheet-region gantlet-pane))))
-        (when region (handle-repaint gantlet-pane region))))))
+  (do-for-gantlet-panes (gantlet-pane task-view)
+    (declare (ignore task-view))
+    (redraw *application-frame* gantlet-pane)))
 
 (define-gantlet-app-command (com-hide-completed-tasks :name t) ()
-  (let* ((gantlet-pane (find-pane-named *application-frame* 'gantlet))
-         (task-view (stream-default-view gantlet-pane)))
+  (do-for-gantlet-panes (gantlet-pane task-view)
     (with-accessors ((hide-completed-tasks task-view-hide-completed-tasks))
         task-view
       (setf hide-completed-tasks t)
       (redraw-and-reset-scroll-extent gantlet-pane))))
 
 (define-gantlet-app-command (com-show-completed-tasks :name t) ()
-  (let* ((gantlet-pane (find-pane-named *application-frame* 'gantlet))
-         (task-view (stream-default-view gantlet-pane)))
+  (do-for-gantlet-panes (gantlet-pane task-view)
     (with-accessors ((hide-completed-tasks task-view-hide-completed-tasks))
         task-view
       (setf hide-completed-tasks nil)
       (redraw-and-reset-scroll-extent gantlet-pane))))
 
 (define-gantlet-app-command (com-hide-past-tasks :name t) ()
-  (let* ((gantlet-pane (find-pane-named *application-frame* 'gantlet))
-         (task-view (stream-default-view gantlet-pane)))
+  (do-for-gantlet-panes (gantlet-pane task-view)
     (with-accessors ((hide-past-tasks task-view-hide-past-tasks))
         task-view
       (setf hide-past-tasks t)
       (redraw-and-reset-scroll-extent gantlet-pane))))
 
 (define-gantlet-app-command (com-show-past-tasks :name t) ()
-  (let* ((gantlet-pane (find-pane-named *application-frame* 'gantlet))
-         (task-view (stream-default-view gantlet-pane)))
+  (do-for-gantlet-panes (gantlet-pane task-view)
     (with-accessors ((hide-past-tasks task-view-hide-past-tasks))
         task-view
       (setf hide-past-tasks nil)
       (redraw-and-reset-scroll-extent gantlet-pane))))
 
 (define-gantlet-app-command (com-hide-non-critical-tasks :name t) ()
-  (let* ((gantlet-pane (find-pane-named *application-frame* 'gantlet))
-         (task-view (stream-default-view gantlet-pane)))
+  (do-for-gantlet-panes (gantlet-pane task-view)
     (with-accessors ((hide-non-critical-tasks task-view-hide-non-critical-tasks))
         task-view
       (setf hide-non-critical-tasks t)
       (redraw-and-reset-scroll-extent gantlet-pane))))
 
 (define-gantlet-app-command (com-show-non-critical-tasks :name t) ()
-  (let* ((gantlet-pane (find-pane-named *application-frame* 'gantlet))
-         (task-view (stream-default-view gantlet-pane)))
+  (do-for-gantlet-panes (gantlet-pane task-view)
     (with-accessors ((hide-non-critical-tasks task-view-hide-non-critical-tasks))
         task-view
       (setf hide-non-critical-tasks nil)
       (redraw-and-reset-scroll-extent gantlet-pane))))
 
 (define-gantlet-app-command (com-set-earlier-start-date :name t) ()
-  (let* ((gantlet-pane (find-pane-named *application-frame* 'gantlet))
-         (task-view (stream-default-view gantlet-pane)))
+  (do-for-gantlet-panes (gantlet-pane task-view)
     (with-accessors ((start task-view-start))
         task-view
       (setf start (local-time:adjust-timestamp
@@ -357,14 +326,18 @@
       (redraw-and-reset-scroll-extent gantlet-pane))))
 
 (define-gantlet-app-command (com-set-later-start-date :name t) ()
-  (let* ((gantlet-pane (find-pane-named *application-frame* 'gantlet))
-         (task-view (stream-default-view gantlet-pane)))
+  (do-for-gantlet-panes (gantlet-pane task-view)
     (with-accessors ((start task-view-start))
         task-view
       (setf start (local-time:adjust-timestamp
                       start
                     (:offset :month +1)))
       (redraw-and-reset-scroll-extent gantlet-pane))))
+
+;; gestures
+(define-gesture-name show-task-info-gesture :pointer-button (:left))
+
+(define-gesture-name hide-task-children-gesture :pointer-button (:left :control))
 
 ;; do we need this??
 #+nil
@@ -408,7 +381,7 @@
                                     :start (start task)
                                     :end (end task))))
       (let ((*standard-output* stream))
-        (present task 'top-level-task)))))
+        (present task 'chart-top-level-task)))))
 
 (define-gantlet-app-command (com-write-task-to-pdf :name t)
     ((pdf-pathname pathname

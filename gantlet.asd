@@ -12,4 +12,6 @@
    (:file "table-pane")
    (:file "table-presentation")
    (:file "commands")
-   (:file "gantlet")))
+   (:file "gantlet")
+   (:file "chart-translator")
+   (:file "table-translator")))

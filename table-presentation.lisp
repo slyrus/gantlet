@@ -1,12 +1,32 @@
 
 (in-package #:gantlet)
 
-(define-presentation-method present (task (type task-presentation) pane
+;;
+;; task-presentation - nothing exciting happens here now
+(define-presentation-type table-task ()
+  :options ((level 0)))
+
+;;
+;; top-level-task -- use this handle the backgrounds, etc...
+(defclass table-top-level-task ()
+  ())
+
+(define-presentation-type table-top-level-task ()
+  :inherit-from 'table-task)
+
+#+nil
+(defmethod output-record-refined-position-test ((record table-top-level-task) x y)
+  nil)
+
+;; task-group presentation
+(define-presentation-type table-task-group ())
+
+(define-presentation-method present (task (type table-task) pane
                                           (task-view task-table-view) &key)
   ;; level is automagically passed in as a presentation-type
   ;; "option". CLIM black magic at work.
   (with-output-as-presentation
-      (t task 'task :record-type 'task-presentation :single-box t)
+      (t task 'task :single-box t)
     (with-accessors ((start task-view-start)
                      (end task-view-end)
                      (show-task-info-hash-table task-view-show-task-info-hash-table)
@@ -57,7 +77,7 @@
                                        *critical-task-border-color*
                                        (mod-elt *task-border-colors* task-counter))))
             (let ((presentation
-                   (with-output-as-presentation (t task 'task-group :single-box t)
+                   (with-output-as-presentation (t task 'task :single-box t)
                      (with-accessors ((name name))
                          task
                        (formatting-row (pane)
@@ -96,43 +116,43 @@
                                                     (local-time:timestamp< child-end start)))
                                           (and (null child-start)
                                                (null child-end)))
-                                   (present child `((task-presentation) :level ,(1+ level))
+                                   (present child `((table-task) :level ,(1+ level))
                                             :stream pane)))))))))
               presentation)))))))
 
-(define-presentation-method present (task (type top-level-task) pane
+(define-presentation-method present (task (type table-top-level-task) pane
                                           (task-view task-table-view) &key)
-  (with-accessors ((task-view-task-counter task-view-task-counter)
-                   (task-view-x-offset task-view-x-offset)
-                   (task-view-y-offset task-view-y-offset)
-                   (task-view-hide-cost task-view-hide-cost)
-                   (x-zoom zoom-x-level))
-      task-view
-    (setf task-view-task-counter 0
-          task-view-x-offset 5
-          task-view-y-offset 18)
-    (let* ((str (name task))
-           (family :sans-serif)
-           (face :bold)
-           (size :huge)
-           (style (make-text-style family face size)))
-      (formatting-table (pane)
-        (with-accessors ((start task-view-start)
+  (let* ((family :sans-serif)
+         (face :bold)
+         (size :large)
+         (style (make-text-style family face size)))
+    (formatting-table (pane)
+      (formatting-row (pane)
+        (formatting-cell (pane :align-x :right)
+          (declare (ignore pane)))
+        (formatting-cell (pane :align-x :left)
+          (with-text-style (pane style)
+            (format pane "Task")))
+        (formatting-cell (pane :align-x :left)
+          (with-text-style (pane style)
+            (format pane "Start")))
+        (formatting-cell (pane :align-x :left)
+          (with-text-style (pane style)
+            (format pane "End"))))
+      (with-accessors ((start task-view-start)
                        (end task-view-end))
           task-view
-        (let*  ((pane-width (rectangle-width (sheet-region pane)))
-                (end-coord (* pane-width x-zoom)))
-          (loop for child across (gantt:task-children task)
-             for task-group-counter from 0
-             do
-               (with-accessors ((child-start start)
-                                (child-end end))
-                   child
-                 (unless (and (null child-start)
-                              (null child-end))
+        (loop for child across (gantt:task-children task)
+           for task-group-counter from 0
+           do
+             (with-accessors ((child-start start)
+                              (child-end end))
+                 child
+               (unless (and (null child-start)
+                            (null child-end))
 
-                   (with-output-as-presentation
-                       (t task 'task-group :single-box t)
-                     (present child '((task-presentation) :level 0)
-                              :stream pane)))))))))))
+                 (with-output-as-presentation
+                     (t task 'task :single-box t)
+                   (present child '((table-task) :level 0)
+                            :stream pane)))))))))
 

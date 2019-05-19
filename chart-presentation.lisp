@@ -1,6 +1,45 @@
 
 (in-package #:gantlet)
 
+(defclass chart-task () ())
+
+;;
+;; task-presentation - nothing exciting happens here now
+(define-presentation-type chart-task ())
+
+(defclass chart-task-presentation (standard-presentation) ())
+
+;;
+;; top-level-task -- use this handle the backgrounds, etc...
+(defclass chart-top-level-task ()
+  ())
+
+(define-presentation-type chart-top-level-task ()
+  :inherit-from 'chart-task)
+
+#+nil
+(defmethod output-record-refined-position-test ((record chart-top-level-task) x y)
+  nil)
+
+;;
+;; mute-presentation - children of this tree are not highlighted
+(defclass mute-presentation (standard-presentation)
+  ())
+
+(define-presentation-type mute-presentation ())
+
+(defmethod highlight-output-record-tree ((record mute-presentation) stream state)
+  nil)
+
+
+;; task-group presentation
+(define-presentation-type chart-task-group ())
+
+#+nil
+(define-presentation-method highlight-presentation
+    ((type chart-task) (record chart-task-presentation) stream state))
+
+
 ;;
 ;; actual drawing routines
 (defun draw-task (task pane x1 y1 x2 y2
@@ -54,8 +93,7 @@
             (with-output-as-presentation
                 (t
                  task
-                 'task
-                 :record-type 'task-presentation)
+                 'chart-task :record-type 'chart-task-presentation)
               (climi::invoke-surrounding-output-with-border
 	       pane
                (lambda (pane)
@@ -115,7 +153,7 @@
 ;; 2. setup/present the task details and (recursively) do the same for
 ;; child tasks
 
-(define-presentation-method present (task (type task) pane
+(define-presentation-method present (task (type chart-task) pane
                                           (task-view task-chart-view) &key)
   (with-accessors ((start task-view-start)
                    (end task-view-end)
@@ -170,7 +208,7 @@
                  (with-output-as-presentation
                      (t
                       task
-                      'task-group)
+                      'chart-task-group)
                    (with-bounding-rectangle* (x1 y1 x2 y2)
                        (draw-task task
                                   pane
@@ -203,7 +241,7 @@
                                                 (local-time:timestamp< child-end start)))
                                       (and (null child-start)
                                            (null child-end)))
-                               (present child 'task :stream pane))))))))
+                               (present child 'chart-task :record-type 'chart-task-presentation :stream pane))))))))
             presentation))))))
 
 ;;
@@ -455,7 +493,7 @@
                          :ink +red+
                          :filled nil)))))
 
-(define-presentation-method present (task (type top-level-task) pane
+(define-presentation-method present (task (type chart-top-level-task) pane
                                           (task-view task-chart-view) &key)
   (with-accessors ((task-view-task-counter task-view-task-counter)
                    (task-view-x-offset task-view-x-offset)
@@ -548,7 +586,7 @@
                               (null child-end))
                    (let ((task-record
                           (with-output-to-output-record (pane)
-                            (present child 'task :stream pane))))
+                            (present child 'chart-task :record-type 'chart-task-presentation :stream pane))))
                      (incf task-view-y-offset 24)
                      (let ((background-record
                             (with-output-to-output-record (pane)
