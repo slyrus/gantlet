@@ -55,7 +55,7 @@
                 (t
                  task
                  'task
-                 :record-type 'task-output-record)
+                 :record-type 'task-presentation)
               (climi::invoke-surrounding-output-with-border
 	       pane
                (lambda (pane)

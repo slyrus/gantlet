@@ -1,12 +1,12 @@
 
 (in-package #:gantlet)
 
-(define-presentation-method present (task (type task-output-record) pane
+(define-presentation-method present (task (type task-presentation) pane
                                           (task-view task-table-view) &key)
   ;; level is automagically passed in as a presentation-type
   ;; "option". CLIM black magic at work.
   (with-output-as-presentation
-      (t task 'task :record-type 'task-output-record :single-box t)
+      (t task 'task :record-type 'task-presentation :single-box t)
     (with-accessors ((start task-view-start)
                      (end task-view-end)
                      (show-task-info-hash-table task-view-show-task-info-hash-table)
@@ -96,7 +96,7 @@
                                                     (local-time:timestamp< child-end start)))
                                           (and (null child-start)
                                                (null child-end)))
-                                   (present child `((task-output-record) :level ,(1+ level))
+                                   (present child `((task-presentation) :level ,(1+ level))
                                             :stream pane)))))))))
               presentation)))))))
 
@@ -133,6 +133,6 @@
 
                    (with-output-as-presentation
                        (t task 'task-group :single-box t)
-                     (present child '((task-output-record) :level 0)
+                     (present child '((task-presentation) :level 0)
                               :stream pane)))))))))))
 

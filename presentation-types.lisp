@@ -4,12 +4,12 @@
 ;;
 ;;
 ;; Classes (for presenations) and Presentation Types
-(defclass task-output-record (standard-presentation)
+(defclass task-presentation (standard-presentation)
   ((task :initarg :task :accessor task)))
 
 ;;
-;; task-output-record - nothing exciting happens here now
-(define-presentation-type task-output-record ()
+;; task-presentation - nothing exciting happens here now
+(define-presentation-type task-presentation ()
   :options ((level 0)))
 
 ;;
@@ -18,7 +18,7 @@
   ())
 
 (define-presentation-type top-level-task ()
-  :inherit-from 'task-output-record)
+  :inherit-from 'task-presentation)
 
 (defmethod output-record-refined-position-test ((record top-level-task) x y)
   nil)
