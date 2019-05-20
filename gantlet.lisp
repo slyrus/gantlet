@@ -129,12 +129,13 @@
                :task (gantlet-app-task *application-frame*)))
    (gantlet-table
     (make-pane 'gantlet-table-pane
-                     :background *app-pane-background-color*
-                     :display-function 'gantlet-table-display
-                     :display-time :command-loop
-                     :height 600
-                     :width 400
-                     :task (gantlet-app-task *application-frame*)))
+               :background *app-pane-background-color*
+               :display-function 'gantlet-table-display
+               :display-time :command-loop
+               :height 600
+               :width 400
+               :max-width 600
+               :task (gantlet-app-task *application-frame*)))
    (resource-list
     (make-pane 'list-pane
 	       :value 'clim:region-intersection
@@ -171,21 +172,22 @@
    (default (vertically ()
               (horizontally ()
                 (8/9 (vertically ()
-                        (horizontally ()
-                          (scrolling ()
-                            gantlet-table)
-                          (scrolling ()
-                            gantlet)
-                          (labelling (:label "Zoom Y")
-                            zoom-y))
-                        (labelling (:label "Zoom X")
-                          zoom-x)))
+                       (horizontally ()
+                         (horizontally ()
+                           (1/4 (scrolling ()
+                                  gantlet-table))
+                           (3/4 (scrolling ()
+                                  gantlet)))
+                         (labelling (:label "Zoom Y")
+                           zoom-y))
+                       (labelling (:label "Zoom X")
+                         zoom-x)))
                 (1/9
                  (vertically ()
                    (labelling (:label "Resources")
                      resource-list)
                    (labelling (:label "Unscheduled Tasks")
-                       unscheduled-task-list))))
+                     unscheduled-task-list))))
               int))))
 
 (defun gantlet-panes ()
