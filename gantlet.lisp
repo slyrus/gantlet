@@ -164,31 +164,35 @@
            :drag-callback 'zoom-y-drag
            :value-changed-callback 'zoom-y-value-changed
            :min-width 24 :max-width 24)
-   (int :interactor
-        :height 200
-        :max-height 100
-        :width 1200))
+   (interactor :interactor
+               :height 200
+               :width 1200))
   (:layouts
    (default (vertically ()
-              (horizontally ()
-                (8/9 (vertically ()
-                       (horizontally ()
-                         (horizontally ()
-                           (1/4 (scrolling ()
-                                  gantlet-table))
-                           (3/4 (scrolling ()
-                                  gantlet)))
-                         (labelling (:label "Zoom Y")
-                           zoom-y))
-                       (labelling (:label "Zoom X")
-                         zoom-x)))
-                (1/9
-                 (vertically ()
-                   (labelling (:label "Resources")
-                     resource-list)
-                   (labelling (:label "Unscheduled Tasks")
-                     unscheduled-task-list))))
-              int))))
+              (4/5
+               (horizontally ()
+                 (8/9
+                  (horizontally ()
+                    (1/4 (scrolling ()
+                           gantlet-table))
+                    (clim:make-pane 'clime:box-adjuster-gadget)
+                    (vertically ()
+                      (horizontally ()
+                        (3/4 (scrolling ()
+                               gantlet))
+                        (labelling (:label "Zoom Y")
+                          zoom-y))
+                      (labelling (:label "Zoom X")
+                        zoom-x))))
+                 (clim:make-pane 'clime:box-adjuster-gadget)
+                 (1/9
+                  (vertically ()
+                    (labelling (:label "Resources")
+                      resource-list)
+                    (labelling (:label "Unscheduled Tasks")
+                      unscheduled-task-list)))))
+              (clim:make-pane 'clime:box-adjuster-gadget)
+              (1/5 interactor)))))
 
 (defun gantlet-panes ()
   (mapcar (lambda (pane-name)
