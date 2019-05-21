@@ -81,18 +81,23 @@
                      (with-accessors ((name name))
                          task
                        (formatting-row (pane)
-                         (formatting-cell (pane :align-x :right)
-                           (if (plusp (length (gantt:task-children task)))
-                             (if hide-task-children
-                                 (format pane "~A" ">")
-                                 (format pane "~A" "V"))
-                             (format pane "~A" "|")))
                          (formatting-cell (pane :align-x :left)
                            ;; This indenting output form doesn't work as expected.
                            #+nil (indenting-output (pane (* 10 level)))
-                           (format pane "~A~A"
-                                   (coerce (make-array (* 2 level) :initial-element #\Space) 'string)
-                                   name))
+                           (let* ((family :fix)
+                                  (face :roman)
+                                  (size :normal)
+                                  (style (make-text-style family face size)))
+                             (with-text-style (pane style)
+                               (format pane "~A"
+                                       (coerce (make-array (* 1 level) :initial-element #\Space) 'string)))
+                             (if (plusp (length (gantt:task-children task)))
+                                 (if hide-task-children
+                                     (format pane "~A" " >")
+                                     (format pane "~A" " V"))
+                                 (format pane "~A" "|"))))
+                         (formatting-cell (pane :align-x :left)
+                           (format pane "~A" name))
                          (formatting-cell (pane :align-x :left)
                            (format pane "~A" (date-string task-start)))
                          (formatting-cell (pane :align-x :left)
