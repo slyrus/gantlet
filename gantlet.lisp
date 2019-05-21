@@ -340,11 +340,6 @@
                     (:offset :month +1)))
       (redraw-and-reset-scroll-extent gantlet-pane))))
 
-;; gestures
-(define-gesture-name show-task-info-gesture :pointer-button (:left))
-
-(define-gesture-name hide-task-children-gesture :pointer-button (:left :control))
-
 ;; do we need this??
 #+nil
 (defmethod true-viewport-region ((pane gantlet-pane))
