@@ -6,7 +6,6 @@
   ((:file "package")
    (:file "style")
    (:file "utilities")
-   (:file "presentation-types")
    (:file "chart-pane")
    (:file "chart-presentation")
    (:file "table-pane")
