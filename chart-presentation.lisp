@@ -304,13 +304,16 @@
                (local-time:with-decoded-timestamp (:year year)
                    (elt year-starts i)
                  (when (< i nyears)
-                   (draw-text* pane
-                               (format nil "~A" year)
-                               (+ (* x-zoom (elt year-coords i)) 4)
-                               (+ y 15)
-                               :align-y :center
-                               :text-style style
-                               :ink *timeline-text-color*)
+                   (when (> (- (elt year-coords (1+ i))
+                               (elt year-coords i))
+                            25)
+                     (draw-text* pane
+                                 (format nil "~A" year)
+                                 (+ (* x-zoom (elt year-coords i)) 4)
+                                 (+ y 15)
+                                 :align-y :center
+                                 :text-style style
+                                 :ink *timeline-text-color*))
                    (draw-rectangle* pane
                                     (* x-zoom (elt year-coords i))
                                     y
@@ -358,7 +361,7 @@
                  (when (< i (1- nquarters))
                    (when (> (- (elt quarter-coords (1+ i))
                                (elt quarter-coords i))
-                            50)
+                            25)
                      (draw-text* pane
                                  (format nil "Q~A ~A"
                                          (1+ (floor (1- month) 3))
@@ -410,18 +413,18 @@
                (local-time:with-decoded-timestamp (:year year :month month)
                    (elt month-starts i)
                  (when (< i (1- nmonths))
-                   (when (> (- (elt month-coords (1+ i))
+                   (if (> (- (elt month-coords (1+ i))
                                (elt month-coords i))
-                            50)
-                     (draw-text* pane
-                                 (format nil "~A ~A"
-                                         (aref local-time:+short-month-names+ month)
-                                         year)
-                                 (+ (* x-zoom (elt month-coords i)) 4)
-                                 (+ y 15)
-                                 :align-y :center
-                                 :text-style style
-                                 :ink *timeline-text-color*))
+                            25)
+                       (draw-text* pane
+                                   (format nil "~A ~A"
+                                           (aref local-time:+short-month-names+ month)
+                                           year)
+                                   (+ (* x-zoom (elt month-coords i)) 4)
+                                   (+ y 15)
+                                   :align-y :center
+                                   :text-style style
+                                   :ink *timeline-text-color*))
                    (draw-rectangle* pane
                                     (* x-zoom (elt month-coords i))
                                     y
