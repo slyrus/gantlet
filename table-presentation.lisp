@@ -83,7 +83,8 @@
                        (formatting-row (pane)
                          (formatting-cell (pane :align-x :left)
                            ;; This indenting output form doesn't work as expected.
-                           #+nil (indenting-output (pane (* 10 level)))
+                           #+nil
+                           (indenting-output (pane (* 10 level)))
                            (let* ((family :fix)
                                   (face :roman)
                                   (size :normal)
