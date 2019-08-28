@@ -134,7 +134,7 @@
                :display-time :command-loop
                :height 600
                :width 400
-               :max-width 600
+               :max-width 800
                :task (gantlet-app-task *application-frame*)))
    (resource-list
     (make-pane 'list-pane
