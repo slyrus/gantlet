@@ -255,8 +255,8 @@
     (with-accessors ((show-task-info-hash-table task-view-show-task-info-hash-table))
         task-view
       (let ((expanded (gethash task show-task-info-hash-table)))
-        (setf (gethash task show-task-info-hash-table) (not expanded))
-        (redraw-and-reset-scroll-extent gantlet-pane)))))
+        (setf (gethash task show-task-info-hash-table) (not expanded))))
+    (redraw-and-reset-scroll-extent gantlet-pane)))
 
 (define-gantlet-app-command (com-show-all-child-tasks :name t :menu t) ()
   (do-for-gantlet-panes (gantlet-pane task-view)
@@ -272,8 +272,8 @@
     (with-accessors ((hide-task-children-hash-table task-view-hide-task-children-hash-table))
         task-view
       (let ((expanded (gethash task hide-task-children-hash-table)))
-        (setf (gethash task hide-task-children-hash-table) (not expanded))
-        (redraw-and-reset-scroll-extent gantlet-pane)))))
+        (setf (gethash task hide-task-children-hash-table) (not expanded))))
+    (redraw-and-reset-scroll-extent gantlet-pane)))
 
 (define-gantlet-app-command (com-redraw :name t) ()
   (do-for-gantlet-panes (gantlet-pane task-view)
@@ -291,36 +291,36 @@
   (do-for-gantlet-panes (gantlet-pane task-view)
     (with-accessors ((hide-completed-tasks task-view-hide-completed-tasks))
         task-view
-      (setf hide-completed-tasks nil)
-      (redraw-and-reset-scroll-extent gantlet-pane))))
+      (setf hide-completed-tasks nil))
+    (redraw-and-reset-scroll-extent gantlet-pane)))
 
 (define-gantlet-app-command (com-hide-past-tasks :name t) ()
   (do-for-gantlet-panes (gantlet-pane task-view)
     (with-accessors ((hide-past-tasks task-view-hide-past-tasks))
         task-view
-      (setf hide-past-tasks t)
-      (redraw-and-reset-scroll-extent gantlet-pane))))
+      (setf hide-past-tasks t))
+    (redraw-and-reset-scroll-extent gantlet-pane)))
 
 (define-gantlet-app-command (com-show-past-tasks :name t) ()
   (do-for-gantlet-panes (gantlet-pane task-view)
     (with-accessors ((hide-past-tasks task-view-hide-past-tasks))
         task-view
-      (setf hide-past-tasks nil)
-      (redraw-and-reset-scroll-extent gantlet-pane))))
+      (setf hide-past-tasks nil))
+    (redraw-and-reset-scroll-extent gantlet-pane)))
 
 (define-gantlet-app-command (com-hide-non-critical-tasks :name t) ()
   (do-for-gantlet-panes (gantlet-pane task-view)
     (with-accessors ((hide-non-critical-tasks task-view-hide-non-critical-tasks))
         task-view
-      (setf hide-non-critical-tasks t)
-      (redraw-and-reset-scroll-extent gantlet-pane))))
+      (setf hide-non-critical-tasks t))
+    (redraw-and-reset-scroll-extent gantlet-pane)))
 
 (define-gantlet-app-command (com-show-non-critical-tasks :name t) ()
   (do-for-gantlet-panes (gantlet-pane task-view)
     (with-accessors ((hide-non-critical-tasks task-view-hide-non-critical-tasks))
         task-view
-      (setf hide-non-critical-tasks nil)
-      (redraw-and-reset-scroll-extent gantlet-pane))))
+      (setf hide-non-critical-tasks nil))
+    (redraw-and-reset-scroll-extent gantlet-pane)))
 
 (define-gantlet-app-command (com-set-earlier-start-date :name t) ()
   (do-for-gantlet-panes (gantlet-pane task-view)
@@ -328,8 +328,8 @@
         task-view
       (setf start (local-time:adjust-timestamp
                       start
-                    (:offset :month -1)))
-      (redraw-and-reset-scroll-extent gantlet-pane))))
+                    (:offset :month -1))))
+    (redraw-and-reset-scroll-extent gantlet-pane)))
 
 (define-gantlet-app-command (com-set-later-start-date :name t) ()
   (do-for-gantlet-panes (gantlet-pane task-view)
@@ -337,8 +337,43 @@
         task-view
       (setf start (local-time:adjust-timestamp
                       start
-                    (:offset :month +1)))
+                    (:offset :month +1))))
+    (redraw-and-reset-scroll-extent gantlet-pane)))
+
+(define-gantlet-app-command (com-set-later-start-date-months :name t) ()
+  (let ((months (accept 'integer :stream (frame-standard-input *application-frame*)
+			:prompt "Months" :default 1)))
+    (do-for-gantlet-panes (gantlet-pane task-view)
+      (with-accessors ((start task-view-start))
+          task-view
+        (setf start (local-time:adjust-timestamp
+                        start
+                      (:offset :month months))))
       (redraw-and-reset-scroll-extent gantlet-pane))))
+
+(define-gantlet-app-command (com-set-start-date :name t) ()
+  (let ((view (stream-default-view (car (gantlet-panes)))))
+    (let ((date-string (accept 'string :stream (frame-standard-input *application-frame*)
+			       :prompt "Date (YYYY-MM-DD)" :default (task-view-start view))))
+      (let ((date (local-time:parse-timestring date-string)))
+        (when date
+          (do-for-gantlet-panes (gantlet-pane task-view)
+            (with-accessors ((start task-view-start))
+                task-view
+              (setf start (local-time:parse-timestring date-string)))
+            (redraw-and-reset-scroll-extent gantlet-pane)))))))
+
+(define-gantlet-app-command (com-set-end-date :name t) ()
+  (let ((view (stream-default-view (car (gantlet-panes)))))
+    (let ((date-string (accept 'string :stream (frame-standard-input *application-frame*)
+			       :prompt "Date (YYYY-MM-DD)" :default (task-view-end view))))
+      (let ((date (local-time:parse-timestring date-string)))
+        (when date
+          (do-for-gantlet-panes (gantlet-pane task-view)
+            (with-accessors ((end task-view-end))
+                task-view
+              (setf end (local-time:parse-timestring date-string)))
+            (redraw-and-reset-scroll-extent gantlet-pane)))))))
 
 ;; do we need this??
 #+nil
