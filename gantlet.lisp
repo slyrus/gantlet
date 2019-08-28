@@ -351,10 +351,13 @@
                       (:offset :month months))))
       (redraw-and-reset-scroll-extent gantlet-pane))))
 
-(define-gantlet-app-command (com-set-start-date :name t) ()
+(define-gantlet-app-command (com-old-set-start-date :name t)
+    ()
   (let ((view (stream-default-view (car (gantlet-panes)))))
-    (let ((date-string (accept 'string :stream (frame-standard-input *application-frame*)
-			       :prompt "Date (YYYY-MM-DD)" :default (task-view-start view))))
+    (let ((date-string (accept 'string
+                               :stream (frame-standard-input *application-frame*)
+			       :prompt "Date (YYYY-MM-DD)"
+                               :default (task-view-start view))))
       (let ((date (local-time:parse-timestring date-string)))
         (when date
           (do-for-gantlet-panes (gantlet-pane task-view)
@@ -363,17 +366,27 @@
               (setf start (local-time:parse-timestring date-string)))
             (redraw-and-reset-scroll-extent gantlet-pane)))))))
 
-(define-gantlet-app-command (com-set-end-date :name t) ()
-  (let ((view (stream-default-view (car (gantlet-panes)))))
-    (let ((date-string (accept 'string :stream (frame-standard-input *application-frame*)
-			       :prompt "Date (YYYY-MM-DD)" :default (task-view-end view))))
-      (let ((date (local-time:parse-timestring date-string)))
-        (when date
-          (do-for-gantlet-panes (gantlet-pane task-view)
-            (with-accessors ((end task-view-end))
-                task-view
-              (setf end (local-time:parse-timestring date-string)))
-            (redraw-and-reset-scroll-extent gantlet-pane)))))))
+(define-gantlet-app-command (com-set-start-date :name t)
+    ((date-string string :prompt "Date (YYYY-MM-DD)"
+                  :default (let ((view (stream-default-view (car (gantlet-panes)))))
+                             (local-time:format-rfc3339-timestring nil (task-view-start view)))))
+  (let ((date (local-time:parse-timestring date-string)))
+    (when date
+        (do-for-gantlet-panes (gantlet-pane task-view)
+          (with-accessors ((start task-view-start))
+              task-view
+            (setf start (local-time:parse-timestring date-string)))))))
+
+(define-gantlet-app-command (com-set-end-date :name t)
+    ((date-string string :prompt "Date (YYYY-MM-DD)"
+                  :default (let ((view (stream-default-view (car (gantlet-panes)))))
+                             (local-time:format-rfc3339-timestring nil (task-view-end view)))))
+  (let ((date (local-time:parse-timestring date-string)))
+    (when date
+        (do-for-gantlet-panes (gantlet-pane task-view)
+          (with-accessors ((end task-view-end))
+              task-view
+            (setf end (local-time:parse-timestring date-string)))))))
 
 ;; do we need this??
 #+nil
