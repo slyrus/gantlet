@@ -61,7 +61,8 @@
                      (progress task-progress)
                      (name name)
                      (task-cost task-cost)
-                     (cost cost))
+                     (cost cost)
+                     (task-type task-type))
         task
       (let (text-list)
         (flet ((add-text (str)
@@ -97,7 +98,9 @@
               (climi::invoke-surrounding-output-with-border
 	       pane
                (lambda (pane)
-                 (draw-rectangle* pane x1 y1 x2 y2 :ink fill-color))
+                 (if (equal gantt:task-type :task)
+                     (draw-rectangle* pane x1 y1 x2 y2 :ink fill-color)
+                     (draw-rectangle* pane x1 y1 x2 y2 :ink +transparent-ink+)))
                :shape :rectangle
                :filled nil
                :ink border-color
@@ -601,10 +604,10 @@
                                                    0 y1
                                                    (max (+ end-coord 18) (+ x2 3)) (+ y2 task-padding)
                                                    :ink row-color)
-                                  (draw-rounded-rectangle* pane x1 (- y1 3) (+ x2 3) (+ y2 3)
-                                                           :ink +gray50+
-                                                           :filled nil
-                                                           :line-thickness 2))))))
+                                  (draw-rectangle* pane x1 (- y1 3) (+ x2 3) (+ y2 3)
+                                                    :ink +gray50+
+                                                    :filled nil
+                                                    :line-thickness 2))))))
                        (add-output-record task-record background-record)
                        (stream-add-output-record pane background-record))))))))
 
