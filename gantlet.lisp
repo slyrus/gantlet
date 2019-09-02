@@ -205,7 +205,7 @@
       (let ((resources (task-resources task)))
         (setf (climi::visible-items resource-list) (length resources))
         (setf (clime:list-pane-items resource-list :invoke-callback nil)
-              (mapcar #'name resources)))))
+              (sort (mapcar #'name resources) #'string<)))))
   (let ((unscheduled-task-list (find-pane-named *application-frame* 'unscheduled-task-list)))
     (when unscheduled-task-list
       (let ((unscheduled-tasks
