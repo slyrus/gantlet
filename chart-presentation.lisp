@@ -100,7 +100,9 @@
                (lambda (pane)
                  (if (equal gantt:task-type :task)
                      (draw-rectangle* pane x1 y1 x2 y2 :ink fill-color)
-                     (draw-rectangle* pane x1 y1 x2 y2 :ink +transparent-ink+)))
+                     ;; FIXME transparent ink blows up the PDF backend
+                     ;; for now, so just use fill-color.
+                     (draw-rectangle* pane x1 y1 x2 y2 :ink fill-color)))
                :shape :rectangle
                :filled nil
                :ink border-color
