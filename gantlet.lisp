@@ -413,7 +413,9 @@
                                  (device-type '(1600 1000))
                                  view
                                  (zoom-x 1.0)
-                                 (zoom-y 1.0))
+                                 (zoom-y 1.0)
+                                 start
+                                 end)
   (with-open-file (file-stream file :direction :output
                                :if-exists :supersede
                                :element-type '(unsigned-byte 8))
@@ -423,12 +425,12 @@
                 :scale-to-fit t
                 :device-type device-type)
       (setf (stream-default-view stream)
-            (or view (make-instance 'task-view
+            (or view (make-instance 'task-chart-view
                                     :task task
                                     :zoom-x zoom-x
                                     :zoom-y zoom-y
-                                    :start (start task)
-                                    :end (end task))))
+                                    :start (or start (start task))
+                                    :end (or end (end task)))))
       (let ((*standard-output* stream))
         (present task 'chart-top-level-task)))))
 
