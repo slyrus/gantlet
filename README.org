@@ -1,0 +1,35 @@
+
+* Overview
+
+You will also need [Gantt](https://github.com/slyrus/gantt) to run this.
+
+* Prerequisites
+
+** Quicklisp Dependenceies
+
+You can pick up most of the needed libraries from Quicklisp as follows:
+
+#+begin_src lisp :session
+  (ql:quickload '(mcclim local-time time-interval named-readtables cl-who copy-directory))
+#+end_src
+
+* Example
+
+To see the exmple GANTT data, the
+[gantt-example](https://github.com/slyrus/gantt-example/) git repo can
+be found here:
+
+#+begin_src sh :session
+  git clone https://github.com/slyrus/gantt-example.git
+#+end_src
+
+To run this:
+
+#+begin_src lisp :session
+  (asdf:load-system "gantt-example")
+  (asdf:load-system "gantlet")
+
+  (defparameter *application*
+    (gantlet:run-gantlet :task gantt-example::*example-project*))
+#+end_src
+
